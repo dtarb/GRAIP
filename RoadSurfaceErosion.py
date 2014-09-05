@@ -85,13 +85,13 @@ def compute_length_elevation(rd_shapefile, input_dem):
     try:
         # TODO: change the field name from 'CalcLength' to 'Length'
         #delete field "CalcLength" if it exists
-        fld_index = layerDefn.GetFieldIndex('CalcLength')
+        fld_index = layerDefn.GetFieldIndex('Length')
         if fld_index > 0:
             layer.DeleteField(fld_index)
 
         # TODO: change the field name from 'CalcRange' to 'Range'
         #delete "CalcRange" if it exists
-        fld_index = layerDefn.GetFieldIndex('CalcRange')
+        fld_index = layerDefn.GetFieldIndex('Range')
         if fld_index > 0:
             layer.DeleteField(fld_index)
     except:
@@ -99,13 +99,13 @@ def compute_length_elevation(rd_shapefile, input_dem):
 
     # add a new field (column) 'CalcLength' to the attribute table
     # TODO: change the field name from 'CalcLength' to 'Length'
-    layer.CreateField(ogr.FieldDefn('CalcLength', ogr.OFTReal))
-    fld_index_length = layerDefn.GetFieldIndex('CalcLength')
+    layer.CreateField(ogr.FieldDefn('Length', ogr.OFTReal))
+    fld_index_length = layerDefn.GetFieldIndex('Length')
 
     # add a new field (column) 'CalcRange' to the attribute table
     # TODO: change the field name from 'CalcRange' to 'Range'
-    layer.CreateField(ogr.FieldDefn('CalcRange', ogr.OFTReal))
-    fld_index_range = layerDefn.GetFieldIndex('CalcRange')
+    layer.CreateField(ogr.FieldDefn('Range', ogr.OFTReal))
+    fld_index_range = layerDefn.GetFieldIndex('Range')
 
     for feature in layer:
         try:
@@ -464,7 +464,8 @@ def create_drainpoint_weighted_grid(input_dem, graip_db, dpsi_gridfile, dp_shape
 
                 # here we are writing to a specific cell of the grid
                 outband.WriteArray(sed_array, xoff=col, yoff=row)
-                print "Writing to grid file for drainpoint:%d" % graipdid
+
+                print "Writing to grid file for drainpoint:%d  value:%s row:%d col:%d" % (graipdid, sed_array[0][0], row, col)
 
             # find the drain point matching row from the DrainPoints db table
             dp_row = cursor.execute("SELECT SedProd, StreamConnectID FROM DrainPoints WHERE GRAIPDID=?", graipdid).fetchone()
@@ -475,6 +476,8 @@ def create_drainpoint_weighted_grid(input_dem, graip_db, dpsi_gridfile, dp_shape
                 _write_sed_accum_to_grid()
 
         outband.FlushCache()
+        # calculate raster statistics (min, max, mean, stdDev)
+        outband.GetStatistics(0, 1)
 
     except:
         raise
