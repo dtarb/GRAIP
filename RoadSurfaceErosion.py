@@ -24,17 +24,22 @@ class GDALFileDriver(object):
 
 
 @click.command()
-# @click.argument('dp', default=r"E:\Graip\GRAIPPythonTools\Data\drainpoints.shp", type=click.Path(exists=True))
-# @click.argument('rd', default=r"E:\Graip\GRAIPPythonTools\Data\roadlines.shp", type=click.Path(exists=True))
-# @click.argument('mdb', default=r"E:\Graip\GRAIPPythonTools\Data\test109.mdb", type=click.Path(exists=True))
-# @click.argument('z', default=r"E:\Graip\GRAIPPythonTools\Data\demr", type=click.Path(exists=True))
-# @click.argument('dpsi', default=r"E:\Graip\GRAIPPythonTools\Data\demdspi.tif", type=click.Path(exists=False))
-@click.option('--dp', default=r"E:\Graip\GRAIPPythonTools\demo\demo_RSE\drainpoints.shp", type=click.Path(exists=True))
-@click.option('--rd', default=r"E:\Graip\GRAIPPythonTools\demo\demo_RSE\roadlines.shp", type=click.Path(exists=True))
-@click.option('--mdb', default=r"E:\Graip\GRAIPPythonTools\demo\demo_RSE\test.mdb", type=click.Path(exists=True))
-@click.option('--z', default=r"E:\Graip\GRAIPPythonTools\demo\demo_RSE\DEM\dem", type=click.Path(exists=True))
-@click.option('--dpsi', default=r"E:\Graip\GRAIPPythonTools\demo\demo_RSE\demdpsi.tif", type=click.Path(exists=False))
+
+### Use the followings for debugging within PyCharm
+# @click.option('--dp', default=r"E:\Graip\GRAIPPythonTools\demo\demo_RSE\drainpoints.shp", type=click.Path(exists=True))
+# @click.option('--rd', default=r"E:\Graip\GRAIPPythonTools\demo\demo_RSE\roadlines.shp", type=click.Path(exists=True))
+# @click.option('--mdb', default=r"E:\Graip\GRAIPPythonTools\demo\demo_RSE\test.mdb", type=click.Path(exists=True))
+# @click.option('--z', default=r"E:\Graip\GRAIPPythonTools\demo\demo_RSE\DEM\dem", type=click.Path(exists=True))
+# @click.option('--dpsi', default=r"E:\Graip\GRAIPPythonTools\demo\demo_RSE\demdpsi.tif", type=click.Path(exists=False))
+# @click.option('--sc', default=True, type=click.BOOL)
+
+@click.option('--dp', default="drainpoints.shp", type=click.Path(exists=True))
+@click.option('--rd', default="roadlines.shp", type=click.Path(exists=True))
+@click.option('--mdb', default="test.mdb", type=click.Path(exists=True))
+@click.option('--z', default="DEM\dem", type=click.Path(exists=True))
+@click.option('--dpsi', default="demdpsi.tif", type=click.Path(exists=False))
 @click.option('--sc', default=True, type=click.BOOL)
+
 def main(dp, rd, mdb, z, dpsi, sc):
     """
     This script computes road sediment production and writes sediment
@@ -55,16 +60,24 @@ def main(dp, rd, mdb, z, dpsi, sc):
         sys.exit(1)
 
     input_dem = z
+
+    # check if the dir path is missing for the database file, then add the current dir path to the file name
+    # Access driver needs the full path to the database file to open it.
+    if not os.path.dirname(mdb):
+        mdb = os.path.join(os.getcwd(), mdb)
+
     graip_db = mdb
     rd_shapefile = rd
     dp_shapefile = dp
     dpsi_gridfile = dpsi
     is_stream_connected = sc
 
+    print "Please wait few seconds. Computation is in progress ..."
     compute_length_elevation(rd_shapefile, input_dem)
     compute_road_sediment_production(rd_shapefile, graip_db)
     compute_drainpoint_sediment_production(graip_db)
     create_drainpoint_weighted_grid(input_dem, graip_db, dpsi_gridfile, dp_shapefile, is_stream_connected)
+    print "Road surface erosion computation finished successfully."
 
 def compute_length_elevation(rd_shapefile, input_dem):
     """
@@ -83,27 +96,23 @@ def compute_length_elevation(rd_shapefile, input_dem):
     dem = gdal.Open(input_dem)
 
     try:
-        # TODO: change the field name from 'CalcLength' to 'Length'
-        #delete field "CalcLength" if it exists
+        #delete field "Length" if it exists
         fld_index = layerDefn.GetFieldIndex('Length')
         if fld_index > 0:
             layer.DeleteField(fld_index)
 
-        # TODO: change the field name from 'CalcRange' to 'Range'
-        #delete "CalcRange" if it exists
+        #delete "Range" if it exists
         fld_index = layerDefn.GetFieldIndex('Range')
         if fld_index > 0:
             layer.DeleteField(fld_index)
     except:
         pass
 
-    # add a new field (column) 'CalcLength' to the attribute table
-    # TODO: change the field name from 'CalcLength' to 'Length'
+    # add a new field (column) 'Length' to the attribute table
     layer.CreateField(ogr.FieldDefn('Length', ogr.OFTReal))
     fld_index_length = layerDefn.GetFieldIndex('Length')
 
-    # add a new field (column) 'CalcRange' to the attribute table
-    # TODO: change the field name from 'CalcRange' to 'Range'
+    # add a new field (column) 'Range' to the attribute table
     layer.CreateField(ogr.FieldDefn('Range', ogr.OFTReal))
     fld_index_range = layerDefn.GetFieldIndex('Range')
 
@@ -117,13 +126,13 @@ def compute_length_elevation(rd_shapefile, input_dem):
                 # calculate range from the elevation of 2 end points of the road segment
                 elevation_1 = _get_coordinate_to_elevation(geom.GetX(0), geom.GetY(0), dem)
                 elevation_2 = _get_coordinate_to_elevation(geom.GetX(total_points-1), geom.GetY(total_points-1), dem)
-                #rd_range = float(abs(elevation_2 - elevation_1))
                 rd_range = abs(elevation_2 - elevation_1)
             else:
                 rd_range = 0    # sometimes shape/feature have no points - in that case we say range is zero
 
             # write range value to shapefile
             feature.SetField(fld_index_range, rd_range)
+
             # rewrite the feature to the layer - this will in fact save the data
             layer.SetFeature(feature)
             geom = None
@@ -141,7 +150,7 @@ def _validate_args(dp, rd, z, mdb, dpsi):
         dataSource = driver.Open(dp, 1)
         if not dataSource:
             #raise Exception("Not a valid shape file (%s)" % rd)
-            print("Not a valid shape file (%s)" % dp)
+            print("Not a valid shape file (%s) provided for parameter --dp." % dp)
             return False
         else:
             dataSource.Destroy()
@@ -153,7 +162,7 @@ def _validate_args(dp, rd, z, mdb, dpsi):
         dataSource = driver.Open(rd, 1)
         if not dataSource:
             #raise Exception("Not a valid shape file (%s)" % rd)
-            print("Not a valid shape file (%s)" % rd)
+            print("Not a valid shape file (%s) provided for parameter --rd." % rd)
             return False
         else:
             dataSource.Destroy()
@@ -161,12 +170,15 @@ def _validate_args(dp, rd, z, mdb, dpsi):
         print(e.message)
         return False
 
-    dpsi_dir = os.path.dirname(dpsi)
+    dpsi_dir = os.path.dirname(os.path.abspath(dpsi))
     if not os.path.exists(dpsi_dir):
-        print ("File path '(%s)' for grid output file does not exist." % dpsi_dir)
+        print ("File path '(%s)' for grid output file (parameter --dpsi) does not exist." % dpsi_dir)
         return False
 
     try:
+        if not os.path.dirname(mdb):
+            mdb = os.path.join(os.getcwd(), mdb)
+
         conn = pyodbc.connect(MS_ACCESS_CONNECTION % mdb)
         conn.close()
     except pyodbc.Error as e:
@@ -240,11 +252,8 @@ def compute_road_sediment_production(rd_shapefile, graip_db):
     layer = dataSource.GetLayer()
     layerDefn = layer.GetLayerDefn()
     fld_index_griapid = layerDefn.GetFieldIndex('GRAIPRID')
-    # TODO: change the field name from 'CalcRange' to 'Range'
-    fld_index_range = layerDefn.GetFieldIndex('CalcRange')
-
-    # TODO: change the field name from 'CalcLength' to 'Length'
-    fld_index_length = layerDefn.GetFieldIndex('CalcLength')
+    fld_index_range = layerDefn.GetFieldIndex('Range')
+    fld_index_length = layerDefn.GetFieldIndex('Length')
 
     # store all the road segments in a list
     features = [ft for ft in layer]
@@ -320,10 +329,10 @@ def compute_road_sediment_production(rd_shapefile, graip_db):
                     data = (row.Slope, row.UnitSed, row.UnitTotSedDel, row.GRAIPRID)
                     cursor.execute(update_sql, data)
 
-                print "Calculated sediment production for road segment#:%d" % row.GRAIPRID
-            else:
-                print "Skipped sediment production calculation for road segment#:%d" % row.GRAIPRID
-                print "No matching record was found in the RoadLines shape file for GRAIPRID:%d" % row.GRAIPRID
+               # print "Calculated sediment production for road segment#:%d" % row.GRAIPRID
+            # else:
+            #     print "Skipped sediment production calculation for road segment#:%d" % row.GRAIPRID
+            #     print "No matching record was found in the RoadLines shape file for GRAIPRID:%d" % row.GRAIPRID
 
             conn.commit()
 
@@ -357,17 +366,20 @@ def compute_drainpoint_sediment_production(graip_db):
             sed_prod_1 = 0
             if dp_row_sum:
                 sed_prod_1 = dp_row_sum.SumSedProd1
-                e_length_dp = dp_row_sum.SumLength / 2  # devide bt 2 since it is only half of the road
+                e_length_dp = dp_row_sum.SumLength / 2  # divide by 2 since it is only half of the road
 
-            sql_select = "SELECT SUM(SedProd2) As SumSedProd2, SUM(Length) As SumLength FROM RoadLines WHERE GRAIPDID2=? GROUP BY GRAIPDID1"
+            sql_select = "SELECT SUM(SedProd2) As SumSedProd2, SUM(Length) As SumLength FROM RoadLines WHERE GRAIPDID2=? GROUP BY GRAIPDID2"
             dp_row_sum = cursor.execute(sql_select, dp_row.GRAIPDID).fetchone()
             sed_prod_2 = 0
             if dp_row_sum:
                 sed_prod_2 = dp_row_sum.SumSedProd2
-                e_length_dp = dp_row_sum.SumLength / 2 + e_length_dp # combine together effective lengths from both sides of road
+
+                # combine together effective lengths from both sides of road
+                e_length_dp = (dp_row_sum.SumLength / 2) + e_length_dp
 
             # update DrainPoints table current iterating row
             dp_row.SedProd = sed_prod_1 + sed_prod_2
+
             dp_row.ELength = e_length_dp
             if dp_row.ELength > 0:
                 dp_row.UnitSed = dp_row.SedProd / dp_row.ELength
@@ -379,7 +391,7 @@ def compute_drainpoint_sediment_production(graip_db):
             data = (dp_row.SedProd, dp_row.ELength, dp_row.UnitSed, dp_row.SedDel, dp_row.GRAIPDID)
             cursor.execute(update_sql, data)
 
-            print "Calculated sediment production for drain point#:%d" % dp_row.GRAIPDID
+            #print "Calculated sediment production for drain point#:%d" % dp_row.GRAIPDID
             conn.commit()
 
     except:
@@ -424,7 +436,7 @@ def create_drainpoint_weighted_grid(input_dem, graip_db, dpsi_gridfile, dp_shape
         outRaster.SetGeoTransform((originX, pixelWidth, 0, originY, 0, pixelHeight))
 
         # TODO: use the band Fill() method to initialize the raster (ref:http://www.gdal.org/classGDALRasterBand.html#a55bf20527df638dc48bf25e2ff26f353)
-        # initialize the newly created tif file with no data values
+        # initialize the newly created tif file with zeros
         grid_initial_data = np.zeros((rows, cols), dtype=np.float32)
         grid_initial_data[:] = 0.0
         outband = outRaster.GetRasterBand(1)
@@ -441,7 +453,7 @@ def create_drainpoint_weighted_grid(input_dem, graip_db, dpsi_gridfile, dp_shape
         dataSource = driver.Open(dp_shapefile, 1)
         layer = dataSource.GetLayer()
 
-        # for each drain point
+        # for each drain point in shape file
         for dp in layer:
             geom = dp.GetGeometryRef()
 
@@ -465,7 +477,7 @@ def create_drainpoint_weighted_grid(input_dem, graip_db, dpsi_gridfile, dp_shape
                 # here we are writing to a specific cell of the grid
                 outband.WriteArray(sed_array, xoff=col, yoff=row)
 
-                print "Writing to grid file for drainpoint:%d  value:%s row:%d col:%d" % (graipdid, sed_array[0][0], row, col)
+                #print "Writing to grid file for drainpoint:%d  value:%s row:%d col:%d" % (graipdid, sed_array[0][0], row, col)
 
             # find the drain point matching row from the DrainPoints db table
             dp_row = cursor.execute("SELECT SedProd, StreamConnectID FROM DrainPoints WHERE GRAIPDID=?", graipdid).fetchone()
@@ -491,11 +503,10 @@ def create_drainpoint_weighted_grid(input_dem, graip_db, dpsi_gridfile, dp_shape
         dem = None
         outRaster = None
 
-    print ">>> Road surface erosion computation finished successfully."
-
 if __name__ == '__main__':
     try:
         main()
     except Exception as e:
+        print "Road surface erosion computation failed."
         print(e.message)
         sys.exit(1)

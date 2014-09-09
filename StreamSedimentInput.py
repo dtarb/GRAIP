@@ -25,24 +25,47 @@ class GDALFileDriver(object):
 
 
 @click.command()
-#@click.option('--net', default=r"E:\Graip\GRAIPPythonTools\demo\demo_SSI\demnet.shp", type=click.Path(exists=True))
-@click.option('--net', default=r"E:\Graip\GRAIPPythonTools\demo\demo_SSI_Dinfinity\demnet.shp", type=click.Path(exists=True))
-#@click.option('--dpsi', default=r"E:\Graip\GRAIPPythonTools\demo\demo_SSI_Dinfinity\demdpsi.tif", type=click.Path(exists=False))
-@click.option('--sca', default=r"E:\Graip\GRAIPPythonTools\demo\demo_SSI_Dinfinity\demsca.tif", type=click.Path(exists=False))
-#@click.option('--dpsi', default=None, type=click.Path(exists=False))
-#@click.option('--sca', default=None, type=click.Path(exists=False))
-@click.option('--ad8', default=r"E:\Graip\GRAIPPythonTools\demo\demo_SSI\demad8.tif", type=click.Path(exists=True))
-#@click.option('--ad8', default=None, type=click.Path(exists=False))
-#@click.option('--sac', default=r"E:\Graip\GRAIPPythonTools\demo\demo_SSI\demsac.tif", type=click.Path(exists=True))
-@click.option('--sac', default=r"E:\Graip\GRAIPPythonTools\demo\demo_SSI_Dinfinity\demsac.tif", type=click.Path(exists=True))
-#@click.option('--spe', default=r"E:\Graip\GRAIPPythonTools\demo\demo_SSI\demspe.tif", type=click.Path(exists=False))
-@click.option('--spe', default=r"E:\Graip\GRAIPPythonTools\demo\demo_SSI_Dinfinity\demspe.tif", type=click.Path(exists=False))
+
+### Use the followings for debugging within the PyCharm
+# #@click.option('--net', default=r"E:\Graip\GRAIPPythonTools\demo\demo_SSI\demnet.shp", type=click.Path(exists=True))
+# @click.option('--net', default=r"E:\Graip\GRAIPPythonTools\demo\demo_SSI_Dinfinity\demnet.shp", type=click.Path(exists=True))
+# #@click.option('--dpsi', default=r"E:\Graip\GRAIPPythonTools\demo\demo_SSI_Dinfinity\demdpsi.tif", type=click.Path(exists=False))
+# @click.option('--sca', default=r"E:\Graip\GRAIPPythonTools\demo\demo_SSI_Dinfinity\demsca.tif", type=click.Path(exists=False))
+# #@click.option('--dpsi', default=None, type=click.Path(exists=False))
+# #@click.option('--sca', default=None, type=click.Path(exists=False))
+# @click.option('--ad8', default=r"E:\Graip\GRAIPPythonTools\demo\demo_SSI\demad8.tif", type=click.Path(exists=True))
+# #@click.option('--ad8', default=None, type=click.Path(exists=False))
+# #@click.option('--sac', default=r"E:\Graip\GRAIPPythonTools\demo\demo_SSI\demsac.tif", type=click.Path(exists=True))
+# @click.option('--sac', default=r"E:\Graip\GRAIPPythonTools\demo\demo_SSI_Dinfinity\demsac.tif", type=click.Path(exists=True))
+# #@click.option('--spe', default=r"E:\Graip\GRAIPPythonTools\demo\demo_SSI\demspe.tif", type=click.Path(exists=False))
+# @click.option('--spe', default=r"E:\Graip\GRAIPPythonTools\demo\demo_SSI_Dinfinity\demspe.tif", type=click.Path(exists=False))
+
+
+@click.option('--net', default="demnet.shp", type=click.Path(exists=True))
+@click.option('--sca', default=None, type=click.Path(exists=False))
+@click.option('--ad8', default="demad8.tif", type=click.Path(exists=True))
+@click.option('--sac', default="demsac.tif", type=click.Path(exists=True))
+@click.option('--spe', default="demspe.tif", type=click.Path(exists=False))
 
 def main(net, sca, ad8, sac, spe):
+
+    """
+    This script computes stream sediment production and saves data to the stream network shapefile.
+
+    \b
+    :param --net: Path to the stream network shapefile
+    :param --sca: Path to the contributing area grid file generated using TauDEM 'Areadinf' function (optional)
+    :param --ad8: Path to the contributing area grid file generated using TauDEM 'Aread8' function
+    :param --sac: Path to accumulated upstream sediment load grid file
+    :param --spe: Path to specific sediment accumulation grid file
+    :return: None
+    """
     if not _validate_args(net, sca, ad8, sac, spe):
         sys.exit(1)
 
-    #_initialize_output_raster_file(sac, spe)
+    print "Please wait. It may take a minute or so. Computation is in progress ..."
+    _initialize_output_raster_file(sac, spe)
+
     if ad8:
         _compute_specific_sediment(sac, ad8, spe, 'd8')
     else:
@@ -51,14 +74,15 @@ def main(net, sca, ad8, sac, spe):
     _compute_upstream_sediment(sac, ad8, sca, net)
 
     _compute_direct_stream_sediment(net)
-    print "done"
+
+    print "Stream sediment computation finished successfully."
 
 def _validate_args(net, sca, ad8, sac, spe):
     driver_shp = ogr.GetDriverByName(GDALFileDriver.ShapeFile())
     try:
         dataSource = driver_shp.Open(net, 1)
         if not dataSource:
-            print("Not a valid shape file (%s)" % net)
+            print("Not a valid shape file (%s) provided for the '--net' parameter." % net)
             return False
         else:
             dataSource.Destroy()
@@ -66,20 +90,12 @@ def _validate_args(net, sca, ad8, sac, spe):
         print(e.message)
         return False
 
-    # if not ad8:
-    #     print "A value must be provided for parameter 'ad8'."
-    #     return False
-
-    # if ad8 and sca:
-    #     print "Only one of the parameter options 'ad8' or 'sca' can be used."
-    #     return False
-
     try:
 
         if sca:
             dataSource = gdal.Open(sca, 1)
             if not dataSource:
-                print("Not a valid tif file (%s) provided for the 'sca' parameter." % sca)
+                print("Not a valid tif file (%s) provided for the '--sca' parameter." % sca)
                 return False
             else:
                 dataSource = None
@@ -87,14 +103,14 @@ def _validate_args(net, sca, ad8, sac, spe):
         if ad8:
             dataSource = gdal.Open(ad8, 1)
             if not dataSource:
-                print("Not a valid tif file (%s) provided for 'ad8' parameter." % ad8)
+                print("Not a valid tif file (%s) provided for '--ad8' parameter." % ad8)
                 return False
             else:
                 dataSource = None
 
         dataSource = gdal.Open(sac, 1)
         if not dataSource:
-            print("Not a valid tif file (%s)" % sac)
+            print("Not a valid tif file (%s) provided for '--sac' parameter." % sac)
             return False
         else:
             dataSource = None
@@ -102,15 +118,23 @@ def _validate_args(net, sca, ad8, sac, spe):
         print(e.message)
         return False
 
-    spe_dir = os.path.dirname(spe)
+    spe_dir = os.path.dirname(os.path.abspath(spe))
     if not os.path.exists(spe_dir):
-        print ("File path '(%s)' for tif output file does not exist." % spe_dir)
+        print ("File path '(%s)' for tif output file (parameter '--spe') does not exist." % spe_dir)
         return False
 
     return True
 
 
 def _initialize_output_raster_file(base_raster_file, output_raster_file):
+
+    """
+    Creates an empty raster file based on the dimension, projection, and cell size of an input raster file
+
+    :param base_raster_file: raster file based on which the new empty raster file to be created
+    :param output_raster_file: name and location of of the output raster file to be created
+    :return: None
+    """
     base_raster = gdal.Open(base_raster_file, 1)
     geotransform = base_raster.GetGeoTransform()
     originX = geotransform[0]
@@ -124,75 +148,33 @@ def _initialize_output_raster_file(base_raster_file, output_raster_file):
     number_of_bands = 1
     outRaster = driver.Create(output_raster_file, cols, rows, number_of_bands, gdal.GDT_Float32)
     outRaster.SetGeoTransform((originX, pixelWidth, 0, originY, 0, pixelHeight))
-    # initialize the newly created tif file with no data values
+
+    # initialize the newly created tif file with zeros
     grid_initial_data = np.zeros((rows, cols), dtype=np.float32)
     grid_initial_data[:] = 0.0
     outband = outRaster.GetRasterBand(1)
     outband.SetNoDataValue(NO_DATA_VALUE)
     outband.WriteArray(grid_initial_data)
 
-    # set the projection of the tif file same as that of the base_raster shape file
+    # set the projection of the tif file same as that of the base_raster file
     outRasterSRS = osr.SpatialReference()
     outRasterSRS.ImportFromWkt(base_raster.GetProjectionRef())
     outRaster.SetProjection(outRasterSRS.ExportToWkt())
 
     outRaster = None
 
-def _compute_specific_sediment(sac, ad8, spe):
-    # ref to the specificsed() c++ method for the computational logic
-    out_raster_spe = gdal.Open(spe, GA_Update)
-    raster_sac = gdal.Open(sac)
-    raster_ad8 = gdal.Open(ad8)
-    out_band_spe = out_raster_spe.GetRasterBand(1)
-    band_sac = raster_sac.GetRasterBand(1)
-    band_ad8 = raster_ad8.GetRasterBand(1)
-    geotransform = raster_ad8.GetGeoTransform()
-    ad8_pixel_width = abs(geotransform[1])
-    ad8_pixel_height = abs(geotransform[5])
-
-    start = time.time()
-    sed_array_spe = np.zeros((band_sac.YSize, band_sac.XSize), dtype=np.float32)
-    for row in range(0, band_sac.YSize):
-        # get the data for the current row for ad8 and sac
-        ad8_current_row_data = band_ad8.ReadAsArray(xoff=0, yoff=row, win_xsize=band_ad8.XSize, win_ysize=1)
-        sac_current_row_data = band_sac.ReadAsArray(xoff=0, yoff=row, win_xsize=band_sac.XSize, win_ysize=1)
-
-        for col in range(0, band_sac.XSize):
-            #TODO: cleanup the commented code below
-            # read the cell data for the current row/col from ad8 - this is causing the processing to be very slow
-            #ad8_current_cell_data = band_ad8.ReadAsArray(xoff=col, yoff=row, win_xsize=1, win_ysize=1)
-            #sac_current_cell_data = band_sac.ReadAsArray(xoff=col, yoff=row, win_xsize=1, win_ysize=1)
-            # create a 2D array to store sediment production data
-            #sed_array_spe = np.zeros((1, 1), dtype=np.float32)
-            # if ad8_current_cell_data[0][0] != 0:
-            #     if ad8_current_cell_data[0][0] != band_ad8.GetNoDataValue():
-            #         sed_array_spe[row][col] = (sac_current_cell_data[0][0] / (ad8_current_cell_data[0][0] *
-            #                                                              ad8_pixel_width* ad8_pixel_height)) * 1000
-            #     else:
-            #         sed_array_spe[row][col] = out_band_spe.GetNoDataValue()
-
-            if ad8_current_row_data[0][col] != 0:
-                if ad8_current_row_data[0][col] != band_ad8.GetNoDataValue():
-                    sed_array_spe[row][col] = (sac_current_row_data[0][col] / (ad8_current_row_data[0][col] *
-                                                                              ad8_pixel_width* ad8_pixel_height)) * 1000
-                else:
-                    sed_array_spe[row][col] = out_band_spe.GetNoDataValue()
-
-                    # here we are writing to a specific cell of the grid
-                # out_band_spe.WriteArray(sed_array_spe, xoff=col, yoff=row)
-                #print('Writing specific sediment data to cell at %d*%d' % (row, col))
-    out_band_spe.WriteArray(sed_array_spe)
-    out_band_spe.FlushCache()
-
-    out_raster_spe = None
-    raster_sac = None
-    raster_ad8 = None
-    sed_array_spe = None
-    end = time.time()
-    print str(end - start)
-
 def _compute_specific_sediment(sac, cont_area, spe, area_type):
     # ref to the specificsed() c++ method for the computational logic
+
+    """
+    Creates the specific sediment accumulation grid file
+
+    :param sac: Accumulated upstream sediment load grid file
+    :param cont_area: contributing area grid file
+    :param spe: Specific sediment accumulation grid file
+    :param area_type: A flag to indicate whether the contributing area is based on 'ad8' or 'dinfinity'
+    :return: None
+    """
     out_raster_spe = gdal.Open(spe, GA_Update)
     raster_sac = gdal.Open(sac)
     raster_cont_area = gdal.Open(cont_area)
@@ -208,7 +190,7 @@ def _compute_specific_sediment(sac, cont_area, spe, area_type):
         # in case of d8 each cell area is 1
         PIXEL_TO_AREA_AND_MG_CONVERSION_FACTOR = (cont_area_pixel_height * cont_area_pixel_width) / 1000
     else:
-        # in case of sca each cell area is same as the cell size. If cell size is 10 m then cell area is 10
+        # in case of sca (dinfinity) each cell area is same as the cell size. If cell size is 10 m then cell area is 10
         PIXEL_TO_AREA_AND_MG_CONVERSION_FACTOR = (cont_area_pixel_height * cont_area_pixel_width) / (1000 * cont_area_pixel_height)
 
     start = time.time()
@@ -219,19 +201,6 @@ def _compute_specific_sediment(sac, cont_area, spe, area_type):
         sac_current_row_data = band_sac.ReadAsArray(xoff=0, yoff=row, win_xsize=band_sac.XSize, win_ysize=1)
 
         for col in range(0, band_sac.XSize):
-            #TODO: cleanup the commented code below
-            # # read the cell data for the current row/col from ad8 - this is causing the processing to be very slow
-            # cont_area_current_cell_data = band_cont_area.ReadAsArray(xoff=col, yoff=row, win_xsize=1, win_ysize=1)
-            # sac_current_cell_data = band_sac.ReadAsArray(xoff=col, yoff=row, win_xsize=1, win_ysize=1)
-            # #create a 2D array to store sediment production data
-            # #sed_array_spe = np.zeros((1, 1), dtype=np.float32)
-            # if cont_area_current_cell_data[0][0] != 0:
-            #     if cont_area_current_cell_data[0][0] != band_cont_area.GetNoDataValue():
-            #         sed_array_spe[row][col] = (sac_current_cell_data[0][0] / (cont_area_current_cell_data[0][0] *
-            #                                                              cont_area_pixel_width* cont_area_pixel_height)) * 1000
-            #     else:
-            #         sed_array_spe[row][col] = out_band_spe.GetNoDataValue()
-
             if cont_area_current_row_data[0][col] != 0:
                 if cont_area_current_row_data[0][col] != band_cont_area.GetNoDataValue():
                     if sac_current_row_data[0][col] != band_sac.GetNoDataValue():
@@ -242,11 +211,11 @@ def _compute_specific_sediment(sac, cont_area, spe, area_type):
                         sed_array_spe[row][col] = out_band_spe.GetNoDataValue()
                 else:
                     sed_array_spe[row][col] = out_band_spe.GetNoDataValue()
-                    # here we are writing to a specific cell of the grid
-                    # out_band_spe.WriteArray(sed_array_spe, xoff=col, yoff=row)
-                    #print('Writing specific sediment data to cell at %d*%d' % (row, col))
+
+    # here we are writing all the data for the grid file. Have tried writing data cell by cell which makes it run very slow
     out_band_spe.WriteArray(sed_array_spe)
     out_band_spe.FlushCache()
+
     # calculate raster statistics (min, max, mean, stdDev)
     out_band_spe.GetStatistics(0, 1)
 
@@ -255,102 +224,19 @@ def _compute_specific_sediment(sac, cont_area, spe, area_type):
     raster_ad8 = None
     sed_array_spe = None
     end = time.time()
-    print str(end - start)
-
-def _compute_upstream_sediment(sac, ad8, net):
-    driver = ogr.GetDriverByName(GDALFileDriver.ShapeFile())
-    dataSource = driver.Open(net, 1)
-    layer = dataSource.GetLayer()
-    layerDefn = layer.GetLayerDefn()
-
-    try:
-        #delete field "SedAccum" if it exists
-        fld_index = layerDefn.GetFieldIndex('SedAccum')
-        if fld_index > 0:
-            layer.DeleteField(fld_index)
-
-        #delete "SpecSed" if it exists
-        fld_index = layerDefn.GetFieldIndex('SpecSed')
-        if fld_index > 0:
-            layer.DeleteField(fld_index)
-
-    except:
-        pass
-
-    # add a new field (column) 'SedAccum' to the attribute table
-    layer.CreateField(ogr.FieldDefn('SedAccum', ogr.OFTReal))
-    fld_index_sed_accum = layerDefn.GetFieldIndex('SedAccum')
-
-    # add a new field (column) 'SpecSed' to the attribute table
-    layer.CreateField(ogr.FieldDefn('SpecSed', ogr.OFTReal))
-    fld_index_spec_sed = layerDefn.GetFieldIndex('SpecSed')
-
-    raster_sac = gdal.Open(sac)
-    band_sac = raster_sac.GetRasterBand(1)
-    raster_ad8 = gdal.Open(ad8)
-    band_ad8 = raster_ad8.GetRasterBand(1)
-    geotransform = raster_ad8.GetGeoTransform()
-    ad8_pixel_width = abs(geotransform[1])
-    ad8_pixel_height = abs(geotransform[5])
-
-    PIXEL_TO_AREA_AND_MG_CONVERSION_FACTOR = (ad8_pixel_height * ad8_pixel_width) / 1000
-
-    def _cleanup():
-        dataSource.Destroy()
-        raster_sac = None
-        raster_ad8 = None
-
-    for feature in layer:
-        try:
-            geom = feature.GetGeometryRef()
-            total_points = geom.GetPointCount()
-            if total_points > 0:
-                # calculate range from the elevation of 2 end points of the road segment
-                # find grid row and col corresponding to stream network
-                row1, col1 = _get_coordinate_to_grid_row_col(geom.GetX(1), geom.GetY(1), raster_sac)
-                row2, col2 = _get_coordinate_to_grid_row_col(geom.GetX(total_points - 2), geom.GetY(total_points - 2), raster_sac)
-                # read the cell data for the current row/col from ad8
-                ad8_current_cell_1_data = band_ad8.ReadAsArray(xoff=col1, yoff=row1, win_xsize=1, win_ysize=1)
-                ad8_current_cell_2_data = band_ad8.ReadAsArray(xoff=col2, yoff=row2, win_xsize=1, win_ysize=1)
-                if total_points > 2:
-                    if ad8_current_cell_1_data[0][0] > ad8_current_cell_2_data[0][0]:   # here area increases going downstream
-                        sac_current_cell_1_data = band_sac.ReadAsArray(xoff=col1, yoff=row1, win_xsize=1, win_ysize=1)
-                        feature.SetField(fld_index_sed_accum, float(sac_current_cell_1_data[0][0]))
-                        feature.SetField(fld_index_spec_sed, float(sac_current_cell_1_data[0][0] /
-                                         (ad8_current_cell_1_data[0][0] * PIXEL_TO_AREA_AND_MG_CONVERSION_FACTOR)))
-
-                    elif ad8_current_cell_1_data[0][0] <= ad8_current_cell_2_data[0][0]:
-                        sac_current_cell_2_data = band_sac.ReadAsArray(xoff=col2, yoff=row2, win_xsize=1, win_ysize=1)
-                        feature.SetField(fld_index_sed_accum, float(sac_current_cell_2_data[0][0]))
-                        feature.SetField(fld_index_spec_sed, float(sac_current_cell_2_data[0][0] /
-                                         (ad8_current_cell_2_data[0][0] * PIXEL_TO_AREA_AND_MG_CONVERSION_FACTOR)))
-                    else:
-                        raise "Invalid shape file."
-                else:   # If total_points is only 2 the back from far end is the first point so actually pick end point with lowest fad8 not highest
-                    if ad8_current_cell_1_data[0][0] > ad8_current_cell_2_data[0][0]:
-                        sac_current_cell_2_data = band_sac.ReadAsArray(xoff=col2, yoff=row2, win_xsize=1, win_ysize=1)
-                        feature.SetField(fld_index_sed_accum, float(sac_current_cell_2_data[0][0]))
-                        feature.SetField(fld_index_spec_sed, float(sac_current_cell_2_data[0][0] /
-                                         (ad8_current_cell_2_data[0][0] * PIXEL_TO_AREA_AND_MG_CONVERSION_FACTOR)))
-
-                    elif ad8_current_cell_1_data[0][0] <= ad8_current_cell_2_data[0][0]:
-                        sac_current_cell_1_data = band_sac.ReadAsArray(xoff=col1, yoff=row1, win_xsize=1, win_ysize=1)
-                        feature.SetField(fld_index_sed_accum, float(sac_current_cell_1_data[0][0]))
-                        feature.SetField(fld_index_spec_sed, float(sac_current_cell_1_data[0][0] /
-                                         (ad8_current_cell_1_data[0][0] * PIXEL_TO_AREA_AND_MG_CONVERSION_FACTOR)))
-                    else:
-                        raise "Invalid shape file."
-
-            # rewrite the feature to the layer - this will in fact save the data
-            layer.SetFeature(feature)
-            geom = None
-        except:
-            _cleanup()
-            raise
-
-    _cleanup()
+    #print str(end - start)
 
 def _compute_upstream_sediment(sac, ad8, sca, net):
+
+    """
+    Computes sediment accumulation (SedAccum) and specif sediment accumulation (SpecSedAccum) and saves
+    these data to the stream network file.
+    :param sac: Accumulated upstream sediment load grid file
+    :param ad8: ad8 Upstream contributing area grid file
+    :param sca: dinfinity Upstream contributing area grid file
+    :param net: Stream network shapefile
+    :return: None
+    """
     driver = ogr.GetDriverByName(GDALFileDriver.ShapeFile())
     dataSource = driver.Open(net, 1)
     layer = dataSource.GetLayer()
@@ -402,6 +288,9 @@ def _compute_upstream_sediment(sac, ad8, sca, net):
 
     def _cleanup():
         dataSource.Destroy()
+        global raster_sac
+        global raster_ad8
+        global raster_sca
         raster_sac = None
         raster_ad8 = None
         raster_sca = None
@@ -412,20 +301,23 @@ def _compute_upstream_sediment(sac, ad8, sca, net):
             geom = feature.GetGeometryRef()
             total_points = geom.GetPointCount()
             if total_points > 0:
-                # find grid (raster_sac) row and col corresponding to stream segment first point
+                # find grid (raster_sac) row and col corresponding to stream segment first point that is not a segment join point
+                # the first point where the segment is joined to another segment is at geom.GetX(0) and geom.GetY(0)
                 row1, col1 = _get_coordinate_to_grid_row_col(geom.GetX(1), geom.GetY(1), raster_sac)
-                # find grid (raster_sac) row and col corresponding to stream segment last point
+
+                # find grid (raster_sac) row and col corresponding to stream segment last point that is not a segment join point
+                # the last point where the segment is joined to another segment is at geom.GetX(total_points - 1) and geom.GetY(total_points -1)
                 row2, col2 = _get_coordinate_to_grid_row_col(geom.GetX(total_points - 2), geom.GetY(total_points - 2), raster_sac)
+
                 # read the cell data for the current row/col from ad8
                 ad8_current_cell_1_data = band_ad8.ReadAsArray(xoff=col1, yoff=row1, win_xsize=1, win_ysize=1)
                 ad8_current_cell_2_data = band_ad8.ReadAsArray(xoff=col2, yoff=row2, win_xsize=1, win_ysize=1)
+
                 if sca:
                     # read the cell data for the current row/col from sca
                     sca_current_cell_1_data = band_sca.ReadAsArray(xoff=col1, yoff=row1, win_xsize=1, win_ysize=1)
                     sca_current_cell_2_data = band_sca.ReadAsArray(xoff=col2, yoff=row2, win_xsize=1, win_ysize=1)
 
-                # if cont_area_current_cell_1_data[0][0] != band_cont_area.GetNoDataValue() and \
-                #                 cont_area_current_cell_2_data[0][0] != band_cont_area.GetNoDataValue():
                 if total_points > 2:
                     if ad8_current_cell_1_data[0][0] > ad8_current_cell_2_data[0][0]:   # here area increases going downstream
                         sac_current_cell_1_data = band_sac.ReadAsArray(xoff=col1, yoff=row1, win_xsize=1, win_ysize=1)
@@ -456,6 +348,7 @@ def _compute_upstream_sediment(sac, ad8, sca, net):
                             feature.SetField(fld_index_spec_sed, 0.0)
                     else:
                         raise "Invalid shape file."
+
                 else:   # If total_points is only 2 the back from far end is the first point so actually pick end point with lowest cont_area not highest
                     if ad8_current_cell_1_data[0][0] > ad8_current_cell_2_data[0][0]:
                         sac_current_cell_2_data = band_sac.ReadAsArray(xoff=col2, yoff=row2, win_xsize=1, win_ysize=1)
@@ -498,10 +391,19 @@ def _compute_upstream_sediment(sac, ad8, sca, net):
 
 def _compute_direct_stream_sediment(net):
     #ref to seddirstream c++ function for the logic of this function
+
+    """
+    Computes 'SedDir" and 'SpecSedDir' and appends these 2 fields to the stream network shapefile
+
+    :param net: stream network shapefile
+    :return: None
+    """
+
     driver = ogr.GetDriverByName(GDALFileDriver.ShapeFile())
     dataSource = driver.Open(net, 1)
     layer = dataSource.GetLayer()
     layerDefn = layer.GetLayerDefn()
+
     # put area in m^2 to km^2 by multiplying 10^6 and then put weight in kg to Mg by dividing 10^3
     KG_PER_SQUARE_METER_TO_MG_PER_SQUARE_KM_FACTOR = 1000
 
@@ -530,7 +432,7 @@ def _compute_direct_stream_sediment(net):
                fld_index_us_link_no1,
                fld_index_us_link_no2,
                fld_index_cont_area]):
-            raise "Invalid streamnetwork shapefile."
+            raise "Invalid stream network shapefile."
 
     except:
         pass
@@ -617,9 +519,11 @@ def _compute_direct_stream_sediment(net):
             # write dir sed accum to stream network shapefile
             feature.SetField(fld_index_sed_dir, sac_dir)
             specific_sed_accum = (sac_dir / dir_area) * KG_PER_SQUARE_METER_TO_MG_PER_SQUARE_KM_FACTOR
+
             # write specific dir sed accum to stream network shapefile
             feature.SetField(fld_index_spec_sed_dir, specific_sed_accum)
-            # rewrite the feature to the layer - this will in fact save the data
+
+            # rewrite the feature to the layer - this will in fact save the data to the file
             layer.SetFeature(feature)
             list_index += 1
         except:
@@ -652,6 +556,8 @@ def _get_coordinate_to_grid_row_col(x, y, dem):
 if __name__ == '__main__':
     try:
         main()
+        sys.exit(0)
     except Exception as e:
+        print "Stream sediment computation failed."
         print(e.message)
         sys.exit(1)
