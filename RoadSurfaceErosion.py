@@ -29,14 +29,14 @@ class GDALFileDriver(object):
 # @click.option('--dp', default=r"E:\Graip\GRAIPPythonTools\demo\demo_RSE\drainpoints.shp", type=click.Path(exists=True))
 # @click.option('--rd', default=r"E:\Graip\GRAIPPythonTools\demo\demo_RSE\roadlines.shp", type=click.Path(exists=True))
 # @click.option('--mdb', default=r"E:\Graip\GRAIPPythonTools\demo\demo_RSE\test.mdb", type=click.Path(exists=True))
-# @click.option('--z', default=r"E:\Graip\GRAIPPythonTools\demo\demo_RSE\DEM\dem", type=click.Path(exists=True))
+# @click.option('--z', default=r"E:\Graip\GRAIPPythonTools\demo\demo_RSE\DEM\dem.tif", type=click.Path(exists=True))
 # @click.option('--dpsi', default=r"E:\Graip\GRAIPPythonTools\demo\demo_RSE\demdpsi.tif", type=click.Path(exists=False))
 # @click.option('--sc', default=True, type=click.BOOL)
 
 @click.option('--dp', default="drainpoints.shp", type=click.Path(exists=True))
 @click.option('--rd', default="roadlines.shp", type=click.Path(exists=True))
 @click.option('--mdb', default="test.mdb", type=click.Path(exists=True))
-@click.option('--z', default="DEM\dem", type=click.Path(exists=True))
+@click.option('--z', default="DEM\dem.tif", type=click.Path(exists=True))
 @click.option('--dpsi', default="demdpsi.tif", type=click.Path(exists=False))
 @click.option('--sc', default=True, type=click.BOOL)
 
@@ -72,7 +72,7 @@ def main(dp, rd, mdb, z, dpsi, sc):
     dpsi_gridfile = dpsi
     is_stream_connected = sc
 
-    print "Please wait few seconds. Computation is in progress ..."
+    print "Please wait a few seconds. Computation is in progress ..."
     compute_length_elevation(rd_shapefile, input_dem)
     compute_road_sediment_production(rd_shapefile, graip_db)
     compute_drainpoint_sediment_production(graip_db)

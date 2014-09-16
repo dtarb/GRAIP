@@ -12,6 +12,7 @@ import time
 
 gdal.UseExceptions()
 NO_DATA_VALUE = -9999
+progress_dots = '.'
 
 class GDALFileDriver(object):
 
@@ -212,6 +213,7 @@ def _compute_specific_sediment(sac, cont_area, spe, area_type):
                 else:
                     sed_array_spe[row][col] = out_band_spe.GetNoDataValue()
 
+        #_show_progress()
     # here we are writing all the data for the grid file. Have tried writing data cell by cell which makes it run very slow
     out_band_spe.WriteArray(sed_array_spe)
     out_band_spe.FlushCache()
@@ -383,6 +385,7 @@ def _compute_upstream_sediment(sac, ad8, sca, net):
             # rewrite the feature to the layer - this will in fact save the data
             layer.SetFeature(feature)
             geom = None
+            #_show_progress()
         except:
             _cleanup()
             raise
@@ -526,6 +529,7 @@ def _compute_direct_stream_sediment(net):
             # rewrite the feature to the layer - this will in fact save the data to the file
             layer.SetFeature(feature)
             list_index += 1
+            #_show_progress()
         except:
             dataSource.Destroy()
             raise
@@ -552,6 +556,15 @@ def _get_coordinate_to_grid_row_col(x, y, dem):
     row = int((y - originY)/pixelHeight)
 
     return row, col
+
+def _show_progress():
+    global progress_dots
+    if len(progress_dots) == 20:
+        progress_dots = '.'
+    else:
+        progress_dots += '.'
+    sys.stdout.write("\r%s" % progress_dots)
+    sys.stdout.flush()
 
 if __name__ == '__main__':
     try:
