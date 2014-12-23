@@ -26,25 +26,18 @@ class GDALFileDriver(object):
 
 
 @click.command()
-
 ### Use the followings for debugging within the PyCharm
-# #@click.option('--net', default=r"E:\Graip\GRAIPPythonTools\demo\demo_SSI\demnet.shp", type=click.Path(exists=True))
-# @click.option('--net', default=r"E:\Graip\GRAIPPythonTools\demo\demo_SSI_Dinfinity\demnet.shp", type=click.Path(exists=True))
-# #@click.option('--dpsi', default=r"E:\Graip\GRAIPPythonTools\demo\demo_SSI_Dinfinity\demdpsi.tif", type=click.Path(exists=False))
-# @click.option('--sca', default=r"E:\Graip\GRAIPPythonTools\demo\demo_SSI_Dinfinity\demsca.tif", type=click.Path(exists=False))
-# #@click.option('--dpsi', default=None, type=click.Path(exists=False))
-# #@click.option('--sca', default=None, type=click.Path(exists=False))
-# @click.option('--ad8', default=r"E:\Graip\GRAIPPythonTools\demo\demo_SSI\demad8.tif", type=click.Path(exists=True))
-# #@click.option('--ad8', default=None, type=click.Path(exists=False))
-# #@click.option('--sac', default=r"E:\Graip\GRAIPPythonTools\demo\demo_SSI\demsac.tif", type=click.Path(exists=True))
-# @click.option('--sac', default=r"E:\Graip\GRAIPPythonTools\demo\demo_SSI_Dinfinity\demsac.tif", type=click.Path(exists=True))
-# #@click.option('--spe', default=r"E:\Graip\GRAIPPythonTools\demo\demo_SSI\demspe.tif", type=click.Path(exists=False))
-# @click.option('--spe', default=r"E:\Graip\GRAIPPythonTools\demo\demo_SSI_Dinfinity\demspe.tif", type=click.Path(exists=False))
-
+#@click.option('--net', default=r"E:\Graip\GRAIPPythonTools\demo\demo_SSI\demnet.shp", type=click.Path(exists=True))
+#@click.option('--sca', default=r"E:\Graip\GRAIPPythonTools\demo\demo_SSI\demsca.tif", type=click.Path(exists=False))
+#@click.option('--sca', default=None, type=click.Path(exists=False))
+#@click.option('--ad8', default=r"E:\Graip\GRAIPPythonTools\demo\demo_SSI\demad8.tif", type=click.Path(exists=True))
+#@click.option('--ad8', default=None, type=click.Path(exists=False))
+#@click.option('--sac', default=r"E:\Graip\GRAIPPythonTools\demo\demo_SSI\demsac.tif", type=click.Path(exists=True))
+#@click.option('--spe', default=r"E:\Graip\GRAIPPythonTools\demo\demo_SSI\demspe.tif", type=click.Path(exists=False))
 
 @click.option('--net', default="demnet.shp", type=click.Path(exists=True))
-@click.option('--sca', default=None, type=click.Path(exists=False))
-@click.option('--ad8', default="demad8.tif", type=click.Path(exists=True))
+@click.option('--sca', default=None, type=click.Path(exists=True))
+@click.option('--ad8', default=None, type=click.Path(exists=True))
 @click.option('--sac', default="demsac.tif", type=click.Path(exists=True))
 @click.option('--spe', default="demspe.tif", type=click.Path(exists=False))
 
@@ -52,11 +45,12 @@ def main(net, sca, ad8, sac, spe):
 
     """
     This script computes stream sediment production and saves data to the stream network shapefile.
+    Either 'ad8' or 'sca' parameter needs to be provided. All other parameters are required.
 
     \b
     :param --net: Path to the stream network shapefile
     :param --sca: Path to the contributing area grid file generated using TauDEM 'Areadinf' function (optional)
-    :param --ad8: Path to the contributing area grid file generated using TauDEM 'Aread8' function
+    :param --ad8: Path to the contributing area grid file generated using TauDEM 'Aread8' function (optional)
     :param --sac: Path to accumulated upstream sediment load grid file
     :param --spe: Path to specific sediment accumulation grid file
     :return: None
@@ -67,10 +61,10 @@ def main(net, sca, ad8, sac, spe):
     print "Please wait. It may take a minute or so. Computation is in progress ..."
     _initialize_output_raster_file(sac, spe)
 
-    if ad8:
-        _compute_specific_sediment(sac, ad8, spe, 'd8')
-    else:
+    if sca:
         _compute_specific_sediment(sac, sca, spe, 'sca')
+    else:
+        _compute_specific_sediment(sac, ad8, spe, 'ad8')
 
     _compute_upstream_sediment(sac, ad8, sca, net)
 
@@ -93,6 +87,14 @@ def _validate_args(net, sca, ad8, sac, spe):
 
     try:
 
+        if not ad8 and not sca:
+            print("One of the 2 parameters '--ad8' or '--sca' must be specified.")
+            return False
+
+        if ad8 and sca:
+            print("Only one of the 2 parameters '--ad8' or '--sca' needs to be specified.")
+            return False
+
         if sca:
             dataSource = gdal.Open(sca, 1)
             if not dataSource:
@@ -108,6 +110,7 @@ def _validate_args(net, sca, ad8, sac, spe):
                 return False
             else:
                 dataSource = None
+
 
         dataSource = gdal.Open(sac, 1)
         if not dataSource:
@@ -223,7 +226,7 @@ def _compute_specific_sediment(sac, cont_area, spe, area_type):
 
     out_raster_spe = None
     raster_sac = None
-    raster_ad8 = None
+    raster_cont_area = None
     sed_array_spe = None
     end = time.time()
     #print str(end - start)
@@ -268,20 +271,23 @@ def _compute_upstream_sediment(sac, ad8, sca, net):
 
     raster_sac = gdal.Open(sac)
     band_sac = raster_sac.GetRasterBand(1)
-    raster_ad8 = gdal.Open(ad8)
-    band_ad8 = raster_ad8.GetRasterBand(1)
-    geotransform = raster_ad8.GetGeoTransform()
-    ad8_pixel_width = abs(geotransform[1])
-    ad8_pixel_height = abs(geotransform[5])
-
-    if sca:
-        raster_sca = gdal.Open(ad8)
+    raster_ad8 = None
+    raster_sca = None
+    if ad8:
+        raster_ad8 = gdal.Open(ad8)
+        band_ad8 = raster_ad8.GetRasterBand(1)
+        geotransform = raster_ad8.GetGeoTransform()
+        ad8_pixel_width = abs(geotransform[1])
+        ad8_pixel_height = abs(geotransform[5])
+    else:
+        raster_sca = gdal.Open(sca)
         band_sca = raster_sca.GetRasterBand(1)
+        geotransform = raster_sca.GetGeoTransform()
         sca_pixel_width = abs(geotransform[1])
         sca_pixel_height = abs(geotransform[5])
 
     #Put area in km^2 by dividing by 10^6 and then multiply by 1000 for kg to Mg conversion with this in the denominator
-    if not sca:
+    if ad8:
         # in case of d8 each cell area is 1
         PIXEL_TO_AREA_AND_MG_CONVERSION_FACTOR = (ad8_pixel_height * ad8_pixel_width) / 1000
     else:
@@ -302,95 +308,44 @@ def _compute_upstream_sediment(sac, ad8, sca, net):
         try:
             geom = feature.GetGeometryRef()
             total_points = geom.GetPointCount()
-            if total_points > 0:
+
+            # Assumption: The stream network created from TauDEM has points ordered from downstream to upstream end
+            # in each feature. The following logic works based on this assumption
+
+            if total_points > 1:
                 # find grid (raster_sac) row and col corresponding to stream segment first point that is not a segment join point
                 # the first point where the segment is joined to another segment is at geom.GetX(0) and geom.GetY(0)
-                row1, col1 = _get_coordinate_to_grid_row_col(geom.GetX(1), geom.GetY(1), raster_sac)
+                row, col = _get_coordinate_to_grid_row_col(geom.GetX(1), geom.GetY(1), raster_sac)
+            else:
+                row, col = _get_coordinate_to_grid_row_col(geom.GetX(0), geom.GetY(0), raster_sac)
 
-                # find grid (raster_sac) row and col corresponding to stream segment last point that is not a segment join point
-                # the last point where the segment is joined to another segment is at geom.GetX(total_points - 1) and geom.GetY(total_points -1)
-                row2, col2 = _get_coordinate_to_grid_row_col(geom.GetX(total_points - 2), geom.GetY(total_points - 2), raster_sac)
+            # read the cell data for the current row/col from ad8
+            if ad8:
+                contributing_area_grid_current_cell_data = band_ad8.ReadAsArray(xoff=col, yoff=row, win_xsize=1, win_ysize=1)
+            else:
+                # read the cell data for the current row/col from sca
+                contributing_area_grid_current_cell_data = band_sca.ReadAsArray(xoff=col, yoff=row, win_xsize=1, win_ysize=1)
 
-                # read the cell data for the current row/col from ad8
-                ad8_current_cell_1_data = band_ad8.ReadAsArray(xoff=col1, yoff=row1, win_xsize=1, win_ysize=1)
-                ad8_current_cell_2_data = band_ad8.ReadAsArray(xoff=col2, yoff=row2, win_xsize=1, win_ysize=1)
+            sac_current_cell_data = band_sac.ReadAsArray(xoff=col, yoff=row, win_xsize=1, win_ysize=1)
+            if sac_current_cell_data[0][0] != band_sac.GetNoDataValue():
+                feature.SetField(fld_index_sed_accum, float(sac_current_cell_data[0][0]))
+                feature.SetField(fld_index_spec_sed, float(sac_current_cell_data[0][0] /
+                                                           (contributing_area_grid_current_cell_data[0][0] *
+                                                            PIXEL_TO_AREA_AND_MG_CONVERSION_FACTOR)))
 
-                if sca:
-                    # read the cell data for the current row/col from sca
-                    sca_current_cell_1_data = band_sca.ReadAsArray(xoff=col1, yoff=row1, win_xsize=1, win_ysize=1)
-                    sca_current_cell_2_data = band_sca.ReadAsArray(xoff=col2, yoff=row2, win_xsize=1, win_ysize=1)
-
-                if total_points > 2:
-                    if ad8_current_cell_1_data[0][0] > ad8_current_cell_2_data[0][0]:   # here area increases going downstream
-                        sac_current_cell_1_data = band_sac.ReadAsArray(xoff=col1, yoff=row1, win_xsize=1, win_ysize=1)
-                        if sac_current_cell_1_data[0][0] != band_sac.GetNoDataValue():
-                            feature.SetField(fld_index_sed_accum, float(sac_current_cell_1_data[0][0]))
-                            if sca:
-                                feature.SetField(fld_index_spec_sed, float(sac_current_cell_1_data[0][0] /
-                                                                       (sca_current_cell_1_data[0][0] * PIXEL_TO_AREA_AND_MG_CONVERSION_FACTOR)))
-                            else:   # ad8
-                                feature.SetField(fld_index_spec_sed, float(sac_current_cell_1_data[0][0] /
-                                                                           (ad8_current_cell_1_data[0][0] * PIXEL_TO_AREA_AND_MG_CONVERSION_FACTOR)))
-                        else:
-                            feature.SetField(fld_index_sed_accum, 0.0)
-                            feature.SetField(fld_index_spec_sed, 0.0)
-
-                    elif ad8_current_cell_1_data[0][0] <= ad8_current_cell_2_data[0][0]:
-                        sac_current_cell_2_data = band_sac.ReadAsArray(xoff=col2, yoff=row2, win_xsize=1, win_ysize=1)
-                        if sac_current_cell_2_data[0][0] != band_sac.GetNoDataValue():
-                            feature.SetField(fld_index_sed_accum, float(sac_current_cell_2_data[0][0]))
-                            if sca:
-                                feature.SetField(fld_index_spec_sed, float(sac_current_cell_2_data[0][0] /
-                                                                   (sca_current_cell_2_data[0][0] * PIXEL_TO_AREA_AND_MG_CONVERSION_FACTOR)))
-                            else:   # ad8
-                                feature.SetField(fld_index_spec_sed, float(sac_current_cell_2_data[0][0] /
-                                                                           (ad8_current_cell_2_data[0][0] * PIXEL_TO_AREA_AND_MG_CONVERSION_FACTOR)))
-                        else:
-                            feature.SetField(fld_index_sed_accum, 0.0)
-                            feature.SetField(fld_index_spec_sed, 0.0)
-                    else:
-                        raise "Invalid shape file."
-
-                else:   # If total_points is only 2 the back from far end is the first point so actually pick end point with lowest cont_area not highest
-                    if ad8_current_cell_1_data[0][0] > ad8_current_cell_2_data[0][0]:
-                        sac_current_cell_2_data = band_sac.ReadAsArray(xoff=col2, yoff=row2, win_xsize=1, win_ysize=1)
-                        if sac_current_cell_2_data[0][0] != band_sac.GetNoDataValue():
-                            feature.SetField(fld_index_sed_accum, float(sac_current_cell_2_data[0][0]))
-                            if sca:
-                                feature.SetField(fld_index_spec_sed, float(sac_current_cell_2_data[0][0] /
-                                                                   (sca_current_cell_2_data[0][0] * PIXEL_TO_AREA_AND_MG_CONVERSION_FACTOR)))
-                            else:   # ad8
-                                feature.SetField(fld_index_spec_sed, float(sac_current_cell_2_data[0][0] /
-                                                                           (ad8_current_cell_2_data[0][0] * PIXEL_TO_AREA_AND_MG_CONVERSION_FACTOR)))
-                        else:
-                            feature.SetField(fld_index_sed_accum, 0.0)
-                            feature.SetField(fld_index_spec_sed, 0.0)
-
-                    elif ad8_current_cell_1_data[0][0] <= ad8_current_cell_2_data[0][0]:
-                        sac_current_cell_1_data = band_sac.ReadAsArray(xoff=col1, yoff=row1, win_xsize=1, win_ysize=1)
-                        if sac_current_cell_1_data[0][0] != band_sac.GetNoDataValue():
-                            feature.SetField(fld_index_sed_accum, float(sac_current_cell_1_data[0][0]))
-                            if sca:
-                                feature.SetField(fld_index_spec_sed, float(sac_current_cell_1_data[0][0] /
-                                                                   (sca_current_cell_1_data[0][0] * PIXEL_TO_AREA_AND_MG_CONVERSION_FACTOR)))
-                            else:   # ad8
-                                feature.SetField(fld_index_spec_sed, float(sac_current_cell_1_data[0][0] /
-                                                                           (ad8_current_cell_1_data[0][0] * PIXEL_TO_AREA_AND_MG_CONVERSION_FACTOR)))
-                        else:
-                            feature.SetField(fld_index_sed_accum, 0.0)
-                            feature.SetField(fld_index_spec_sed, 0.0)
-                    else:
-                        raise "Invalid shape file."
+            else:
+                feature.SetField(fld_index_sed_accum, 0.0)
+                feature.SetField(fld_index_spec_sed, 0.0)
 
             # rewrite the feature to the layer - this will in fact save the data
             layer.SetFeature(feature)
             geom = None
-            #_show_progress()
         except:
             _cleanup()
             raise
 
     _cleanup()
+
 
 def _compute_direct_stream_sediment(net):
     #ref to seddirstream c++ function for the logic of this function

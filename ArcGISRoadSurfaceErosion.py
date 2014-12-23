@@ -13,14 +13,24 @@ is_stream_connected = arcpy.GetParameterAsText(5)
 
 # construct command to execute
 this_script_dir = os.path.dirname(os.path.realpath(__file__))
+# put quotes around file paths in case they have spaces
+#this_script_dir = '"' + this_script_dir + '"'
+dp_shapefile = '"' + dp_shapefile + '"'
+rd_shapefile = '"' + rd_shapefile + '"'
+graip_db_file = '"' + graip_db_file + '"'
+dem_grid_file = '"' + dem_grid_file + '"'
+dpsi_raster_file = '"' + dpsi_raster_file + '"'
 py_script_to_execute = os.path.join(this_script_dir, 'RoadSurfaceErosion.py')
+py_script_to_execute = '"' + py_script_to_execute + '"'
 cmd = py_script_to_execute + \
       ' --dp ' + dp_shapefile + \
       ' --rd ' + rd_shapefile + \
       ' --mdb ' + graip_db_file + \
       ' --z ' + dem_grid_file + \
-      ' --dpsi ' + dpsi_raster_file + \
-      ' --sc ' + is_stream_connected
+      ' --dpsi ' + dpsi_raster_file
+
+if str(is_stream_connected) == 'true':
+    cmd += ' --sc '
 
 # Submit command to operating system - don;t use this as it will show the console window
 #os.system(cmd)

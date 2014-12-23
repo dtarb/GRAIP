@@ -38,8 +38,7 @@ class GDALFileDriver(object):
 @click.option('--mdb', default="test.mdb", type=click.Path(exists=True))
 @click.option('--z', default="DEM\dem.tif", type=click.Path(exists=True))
 @click.option('--dpsi', default="demdpsi.tif", type=click.Path(exists=False))
-@click.option('--sc', default=True, type=click.BOOL)
-
+@click.option('--sc', is_flag=True)
 def main(dp, rd, mdb, z, dpsi, sc):
     """
     This script computes road sediment production and writes sediment
@@ -53,7 +52,7 @@ def main(dp, rd, mdb, z, dpsi, sc):
     :param --mdb: Path to the graip Access database file
     :param --z: Path to the dem file
     :param --dpsi: Path to the output weight sediment production grid file
-    :param --sc: Flag (True/False) to indicate if sediment production will be writen to grid file for all drain points or only for stream connected drain points
+    :param --sc: A flag if provided sediment production will be writen to grid file for only stream connected drain points, otherwise for all drain points
     :return: None
     """
     if not _validate_args(dp, rd, z, mdb, dpsi):
@@ -70,7 +69,11 @@ def main(dp, rd, mdb, z, dpsi, sc):
     rd_shapefile = rd
     dp_shapefile = dp
     dpsi_gridfile = dpsi
-    is_stream_connected = sc
+
+    if sc:
+        is_stream_connected = True
+    else:
+        is_stream_connected = False
 
     print "Please wait a few seconds. Computation is in progress ..."
     compute_length_elevation(rd_shapefile, input_dem)
