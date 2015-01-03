@@ -190,7 +190,7 @@ def _compute_specific_sediment(sac, cont_area, spe, area_type):
     cont_area_pixel_height = abs(geotransform[5])
 
     #Put area in km^2 by dividing by 10^6 and then multiply by 1000 for kg to Mg conversion with this in the denominator
-    if area_type == 'd8':
+    if area_type == 'ad8':
         # in case of d8 each cell area is 1
         PIXEL_TO_AREA_AND_MG_CONVERSION_FACTOR = (cont_area_pixel_height * cont_area_pixel_width) / 1000
     else:
