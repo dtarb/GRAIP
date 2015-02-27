@@ -47,6 +47,8 @@ Filename: "{app}\setup_files\GDAL-1.9.2.win32-py2.7.exe"; Flags: waituntiltermin
 Filename: "{app}\setup_files\numpy-1.8.1-win32-superpack-python2.7.exe"; Flags: waituntilterminated
 ; install pyodbc
 Filename: "{app}\setup_files\pyodbc-3.0.7.win32-py2.7.exe"; Flags: waituntilterminated
+; install scipy
+Filename: "{app}\setup_files\scipy-0.15.1-win32-superpack-python2.7.exe"; Flags: waituntilterminated
 
 ; >>>TODO: The set_proj_lib.py file have code to copy the proj.dll file from the Proj installtion bin directory to the GDAL bin directory
 ; also delete every thing from the Proj lib's nad directory

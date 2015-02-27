@@ -1,3 +1,6 @@
+#from array import array
+from numpy.numarray import array
+
 __author__ = 'Pabitra'
 from osgeo import ogr, gdal, osr
 import numpy as np
@@ -5,6 +8,7 @@ import pyodbc
 import sys
 import click
 import os
+from scipy import interpolate
 
 # TODO: Need to find out how to catch gdal exceptions
 
@@ -33,6 +37,13 @@ class GDALFileDriver(object):
 # @click.option('--dpsi', default=r"E:\Graip\GRAIPPythonTools\demo\demo_RSE\demdpsi.tif", type=click.Path(exists=False))
 # @click.option('--sc', default=True, type=click.BOOL)
 
+# @click.option('--dp', default=r"E:\Graip\GRAIPPythonTools\Data\EFWR_TestSet\drainpoints.shp", type=click.Path(exists=True))
+# @click.option('--rd', default=r"E:\Graip\GRAIPPythonTools\Data\EFWR_TestSet\roadlines.shp", type=click.Path(exists=True))
+# @click.option('--mdb', default=r"E:\Graip\GRAIPPythonTools\Data\EFWR_TestSet\test.mdb", type=click.Path(exists=True))
+# @click.option('--z', default=r"E:\Graip\GRAIPPythonTools\Data\EFWR_TestSet\Grids\wsr.tif", type=click.Path(exists=True))
+# @click.option('--dpsi', default=r"E:\Graip\GRAIPPythonTools\Data\EFWR_TestSet\Grids\demdpsi.tif", type=click.Path(exists=False))
+# @click.option('--sc', default=True, type=click.BOOL)
+
 @click.option('--dp', default="drainpoints.shp", type=click.Path(exists=True))
 @click.option('--rd', default="roadlines.shp", type=click.Path(exists=True))
 @click.option('--mdb', default="test.mdb", type=click.Path(exists=True))
@@ -46,7 +57,6 @@ def main(dp, rd, mdb, z, dpsi, sc):
     SedProd2, TotSedProd, TotSedDel, UnitTotSedDel, UnitSed) and DrainPoints table (affected table columns are:
     SedProd, ELength, UnitSed, SedDel). It also creates the weight sediment grid file (dpsi)
 
-    \b
     :param --dp: Path to the drainpoints shape file
     :param --rd: Path to the roadlines shape file
     :param --mdb: Path to the graip Access database file
@@ -76,12 +86,14 @@ def main(dp, rd, mdb, z, dpsi, sc):
         is_stream_connected = False
 
     print "Please wait a few seconds. Computation is in progress ..."
-    compute_length_elevation(rd_shapefile, input_dem)
+   # compute_length_elevation(rd_shapefile, input_dem)
+    compute_length_elevation_interpolation(rd_shapefile, input_dem)
     compute_road_sediment_production(rd_shapefile, graip_db)
     compute_drainpoint_sediment_production(graip_db)
     create_drainpoint_weighted_grid(input_dem, graip_db, dpsi_gridfile, dp_shapefile, is_stream_connected)
     print "Road surface erosion computation finished successfully."
 
+# NOT USED - REPLACED BY "compute_length_elevation_interpolation" function
 def compute_length_elevation(rd_shapefile, input_dem):
     """
     Calculates road segment length and elevation and writes to roadlines shapefile
@@ -122,17 +134,24 @@ def compute_length_elevation(rd_shapefile, input_dem):
     for feature in layer:
         try:
             geom = feature.GetGeometryRef()
-            total_points = geom.GetPointCount()
-            # write length value to shapefile
-            feature.SetField(fld_index_length, geom.Length())
-            if total_points > 0:
-                # calculate range from the elevation of 2 end points of the road segment
-                elevation_1 = _get_coordinate_to_elevation(geom.GetX(0), geom.GetY(0), dem)
-                elevation_2 = _get_coordinate_to_elevation(geom.GetX(total_points-1), geom.GetY(total_points-1), dem)
-                rd_range = abs(elevation_2 - elevation_1)
+            if geom:
+                total_points = geom.GetPointCount()
+                # write length value to shapefile
+                #feature.SetField(fld_index_length, geom.Length())
+                rd_length = geom.Length()
+                if total_points > 0:
+                    # calculate range from the elevation of 2 end points of the road segment
+                    elevation_1 = _get_coordinate_to_elevation(geom.GetX(0), geom.GetY(0), dem)
+                    elevation_2 = _get_coordinate_to_elevation(geom.GetX(total_points-1), geom.GetY(total_points-1), dem)
+                    rd_range = abs(elevation_2 - elevation_1)
+                else:
+                    rd_range = 0    # sometimes shape/feature have no points - in that case we say range is zero
             else:
-                rd_range = 0    # sometimes shape/feature have no points - in that case we say range is zero
+                rd_length = 0
+                rd_range = 0
 
+            # write length value to shapefile
+            feature.SetField(fld_index_length, rd_length)
             # write range value to shapefile
             feature.SetField(fld_index_range, rd_range)
 
@@ -146,6 +165,91 @@ def compute_length_elevation(rd_shapefile, input_dem):
     # close datasource
     dataSource.Destroy()
 
+def compute_length_elevation_interpolation(rd_shapefile, input_dem):
+    """
+    Calculates road segment length and elevation and writes to roadlines shapefile
+
+    :param rd_shapefile: Path to roadlines shapefile
+    :param input_dem: Path to dem file
+    :return: None
+    """
+
+    driver = ogr.GetDriverByName(GDALFileDriver.ShapeFile())
+    dataSource = driver.Open(rd_shapefile, 1)
+    layer = dataSource.GetLayer()
+    layerDefn = layer.GetLayerDefn()
+
+    dem = gdal.Open(input_dem)
+    dem_nx = dem.RasterXSize
+    dem_ny = dem.RasterYSize
+    gt = dem.GetGeoTransform()
+    dem_originX = gt[0]
+    dem_originY = gt[3]
+    dem_pixelWidth = gt[1]
+    dem_pixelHeight = gt[5]
+    dem_band_array = dem.GetRasterBand(1).ReadAsArray()
+
+    # Compute mid-point grid spacings
+    # ref: http://gis.stackexchange.com/questions/7611/bilinear-interpolation-of-point-data-on-a-raster-in-python
+    ax = array([gt[0] + ix*gt[1] + gt[1]/2.0 for ix in range(dem_nx)])
+    ay = array([gt[3] + iy*gt[5] + gt[5]/2.0 for iy in range(dem_ny)])
+    bilinterp = interpolate.interp2d(ax, ay, dem_band_array, kind='linear')
+
+    try:
+        #delete field "Length" if it exists
+        fld_index = layerDefn.GetFieldIndex('Length')
+        if fld_index > 0:
+            layer.DeleteField(fld_index)
+
+        #delete "Range" if it exists
+        fld_index = layerDefn.GetFieldIndex('Range')
+        if fld_index > 0:
+            layer.DeleteField(fld_index)
+    except:
+        pass
+
+    # add a new field (column) 'Length' to the attribute table
+    layer.CreateField(ogr.FieldDefn('Length', ogr.OFTReal))
+    fld_index_length = layerDefn.GetFieldIndex('Length')
+
+    # add a new field (column) 'Range' to the attribute table
+    layer.CreateField(ogr.FieldDefn('Range', ogr.OFTReal))
+    fld_index_range = layerDefn.GetFieldIndex('Range')
+
+    for feature in layer:
+        try:
+            geom = feature.GetGeometryRef()
+            if geom:
+                total_points = geom.GetPointCount()
+                # write length value to shapefile
+                #feature.SetField(fld_index_length, geom.Length())
+                rd_length = geom.Length()
+                if total_points > 0:
+                    # calculate range from the elevation of 2 end points of the road segment
+                    # using the interpolation
+                    elevation_1 = bilinterp(geom.GetX(0), geom.GetY(0))[0]
+                    elevation_2 = bilinterp(geom.GetX(total_points-1), geom.GetY(total_points-1))[0]
+                    rd_range = abs(elevation_2 - elevation_1)
+                else:
+                    rd_range = 0    # sometimes shape/feature have no points - in that case we say range is zero
+            else:
+                rd_length = 0
+                rd_range = 0
+
+            # write length value to shapefile
+            feature.SetField(fld_index_length, rd_length)
+            # write range value to shapefile
+            feature.SetField(fld_index_range, rd_range)
+
+            # rewrite the feature to the layer - this will in fact save the data
+            layer.SetFeature(feature)
+            geom = None
+        except:
+            dataSource.Destroy()
+            raise
+
+    # close datasource
+    dataSource.Destroy()
 
 def _validate_args(dp, rd, z, mdb, dpsi):
     driver = ogr.GetDriverByName(GDALFileDriver.ShapeFile())
@@ -331,11 +435,14 @@ def compute_road_sediment_production(rd_shapefile, graip_db):
                     update_sql = "UPDATE RoadLines SET Slope=?, UnitSed=?, UnitTotSedDel=? WHERE GRAIPRID=?"
                     data = (row.Slope, row.UnitSed, row.UnitTotSedDel, row.GRAIPRID)
                     cursor.execute(update_sql, data)
+                else:
+                    row.Slope = 0
+                    row.UnitSed = 0
+                    row.UnitTotSedDel = 0
 
-               # print "Calculated sediment production for road segment#:%d" % row.GRAIPRID
-            # else:
-            #     print "Skipped sediment production calculation for road segment#:%d" % row.GRAIPRID
-            #     print "No matching record was found in the RoadLines shape file for GRAIPRID:%d" % row.GRAIPRID
+                update_sql = "UPDATE RoadLines SET Slope=?, UnitSed=?, UnitTotSedDel=? WHERE GRAIPRID=?"
+                data = (row.Slope, row.UnitSed, row.UnitTotSedDel, row.GRAIPRID)
+                cursor.execute(update_sql, data)
 
             conn.commit()
 
@@ -386,6 +493,9 @@ def compute_drainpoint_sediment_production(graip_db):
             dp_row.ELength = e_length_dp
             if dp_row.ELength > 0:
                 dp_row.UnitSed = dp_row.SedProd / dp_row.ELength
+            else:
+                dp_row.UnitSed = 0
+                dp_row.SedProd = 0
 
             stream_con = 0 if dp_row.StreamConnectID == 1 or dp_row.StreamConnectID == 0 else 1
             dp_row.SedDel = stream_con * dp_row.SedProd
