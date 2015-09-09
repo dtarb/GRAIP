@@ -53,7 +53,7 @@ Source: "E:\SoftwareProjects\GRAIPPythonTools\setup_tools\SourceFiles\MSCOMCTL.O
 Name: "{group}\Preprocessor"; Filename: "{app}\Preprocessor\GRAIPPreprocessor.exe"
 
 [Registry]
-; set PATH
+; set PATH  for PythonTools
 Root: HKLM; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType:string; ValueName:"PATH"; ValueData:"{code:GetPathData|{olddata}}"; Flags: preservestringtype
 
 
