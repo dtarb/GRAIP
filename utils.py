@@ -17,7 +17,7 @@ class GDALFileDriver(object):
         return "GTiff"
 
 
-def initialize_output_raster_file(base_raster_file, output_raster_file):
+def initialize_output_raster_file(base_raster_file, output_raster_file, initial_data=0.0, data_type=gdal.GDT_Float32):
 
     """
     Creates an empty raster file based on the dimension, projection, and cell size of an input raster file
@@ -41,8 +41,13 @@ def initialize_output_raster_file(base_raster_file, output_raster_file):
     outRaster.SetGeoTransform((originX, pixelWidth, 0, originY, 0, pixelHeight))
 
     # initialize the newly created tif file with zeros
-    grid_initial_data = np.zeros((rows, cols), dtype=np.float32)
-    grid_initial_data[:] = 0.0
+    if data_type == gdal.GDT_Float32:
+        grid_initial_data = np.zeros((rows, cols), dtype=np.float32)
+        grid_initial_data[:] = float(initial_data)
+    else:
+        grid_initial_data = np.zeros((rows, cols), dtype=np.int)
+        grid_initial_data[:] = int(initial_data)
+
     outband = outRaster.GetRasterBand(1)
     outband.SetNoDataValue(NO_DATA_VALUE)
     outband.WriteArray(grid_initial_data)
