@@ -1,12 +1,23 @@
 __author__ = 'Pabitra'
-import arcpy
+
 import os
 import subprocess
 
+import arcpy
+
 # get the input parameters
 stream_network_shapefile = arcpy.GetParameterAsText(0)
+desc = arcpy.Describe(stream_network_shapefile)
+stream_network_shapefile = str(desc.catalogPath)
+
 contributing_area_raster_file = arcpy.GetParameterAsText(1)
+desc = arcpy.Describe(contributing_area_raster_file)
+contributing_area_raster_file = str(desc.catalogPath)
+
 sac_raster_file = arcpy.GetParameterAsText(2)
+desc = arcpy.Describe(sac_raster_file)
+sac_raster_file = str(desc.catalogPath)
+
 is_dinfinity = arcpy.GetParameterAsText(3)
 #sca_raster_file = arcpy.GetParameterAsText(3)
 spe_raster_file = arcpy.GetParameterAsText(4)
@@ -15,11 +26,9 @@ spe_raster_file = arcpy.GetParameterAsText(4)
 # construct command to execute
 current_script_dir = os.path.dirname(os.path.realpath(__file__))
 # put quotes around file paths in case they have spaces
-#current_script_dir = '"' + current_script_dir + '"'
 stream_network_shapefile = '"' + stream_network_shapefile + '"'
 contributing_area_raster_file = '"' + contributing_area_raster_file + '"'
 sac_raster_file = '"' + sac_raster_file + '"'
-#sca_raster_file = '"' + sca_raster_file + '"'
 spe_raster_file = '"' + spe_raster_file + '"'
 py_script_to_execute = os.path.join(current_script_dir, 'StreamSedimentInput.py')
 py_script_to_execute = '"' + py_script_to_execute + '"'
