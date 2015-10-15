@@ -1,39 +1,33 @@
 __author__ = 'Pabitra'
 
+import os
+import sys
+import time
+
 from osgeo import ogr, gdal, osr
 from gdalconst import *
 import numpy as np
-import sys
 import click
-import os
-import time
+
+import utils
+
 
 # TODO: Need to find out how to catch gdal exceptions
 
 gdal.UseExceptions()
-NO_DATA_VALUE = -9999
+
 progress_dots = '.'
-
-class GDALFileDriver(object):
-
-    @classmethod
-    def ShapeFile(cls):
-        return "ESRI Shapefile"
-
-    @classmethod
-    def TifFile(cls):
-        return "GTiff"
 
 
 @click.command()
 ### Use the followings for debugging within the PyCharm
 #@click.option('--net', default=r"E:\Graip\GRAIPPythonTools\demo\demo_SSI\demnet.shp", type=click.Path(exists=True))
-#@click.option('--sca', default=r"E:\Graip\GRAIPPythonTools\demo\demo_SSI\demsca.tif", type=click.Path(exists=False))
+#@click.option('--sca', default=r"E:\Graip\GRAIPPythonTools\demo\demo_SSI\DEM\demsca", type=click.Path(exists=True))
 #@click.option('--sca', default=None, type=click.Path(exists=False))
 #@click.option('--ad8', default=r"E:\Graip\GRAIPPythonTools\demo\demo_SSI\demad8.tif", type=click.Path(exists=True))
 #@click.option('--ad8', default=None, type=click.Path(exists=False))
-#@click.option('--sac', default=r"E:\Graip\GRAIPPythonTools\demo\demo_SSI\demsac.tif", type=click.Path(exists=True))
-#@click.option('--spe', default=r"E:\Graip\GRAIPPythonTools\demo\demo_SSI\demspe.tif", type=click.Path(exists=False))
+#@click.option('--sac', default=r"E:\Graip\GRAIPPythonTools\demo\demo_SSI\DEM\demsac", type=click.Path(exists=True))
+#@click.option('--spe', default=r"E:\Graip\GRAIPPythonTools\demo\demo_SSI\demspe_from_grid_1.tif", type=click.Path(exists=False))
 
 @click.option('--net', default="demnet.shp", type=click.Path(exists=True))
 @click.option('--sca', default=None, type=click.Path(exists=True))
@@ -55,10 +49,9 @@ def main(net, sca, ad8, sac, spe):
     :param --spe: Path to specific sediment accumulation grid file
     :return: None
     """
-    if not _validate_args(net, sca, ad8, sac, spe):
-        sys.exit(1)
+    _validate_args(net, sca, ad8, sac, spe)
 
-    print "Please wait. It may take a minute or so. Computation is in progress ..."
+    print ("Please wait. It may take a minute or so. Computation is in progress ...")
     _initialize_output_raster_file(sac, spe)
 
     if sca:
@@ -70,64 +63,55 @@ def main(net, sca, ad8, sac, spe):
 
     _compute_direct_stream_sediment(net)
 
-    print "Stream sediment computation finished successfully."
+    print ("Stream sediment computation finished successfully.")
 
 def _validate_args(net, sca, ad8, sac, spe):
-    driver_shp = ogr.GetDriverByName(GDALFileDriver.ShapeFile())
+    driver_shp = ogr.GetDriverByName(utils.GDALFileDriver.ShapeFile())
     try:
         dataSource = driver_shp.Open(net, 1)
         if not dataSource:
-            print("Not a valid shape file (%s) provided for the '--net' parameter." % net)
-            return False
+            raise utils.ValidationException("Not a valid shape file (%s) provided for the '--net' parameter." % net)
         else:
             dataSource.Destroy()
-    except Exception as e:
-        print(e.message)
-        return False
+    except Exception as ex:
+        raise utils.ValidationException(ex.message)
 
     try:
-
         if not ad8 and not sca:
-            print("One of the 2 parameters '--ad8' or '--sca' must be specified.")
-            return False
+            raise utils.ValidationException("One of the 2 parameters '--ad8' or '--sca' must be specified.")
 
         if ad8 and sca:
-            print("Only one of the 2 parameters '--ad8' or '--sca' needs to be specified.")
-            return False
+            raise utils.ValidationException("Only one of the 2 parameters '--ad8' or '--sca' needs to be specified.")
 
         if sca:
-            dataSource = gdal.Open(sca, 1)
+            dataSource = gdal.Open(sca, GA_ReadOnly)
             if not dataSource:
-                print("Not a valid tif file (%s) provided for the '--sca' parameter." % sca)
-                return False
+                raise utils.ValidationException("File open error. Not a valid file (%s) provided for the '--sca' "
+                                                "parameter." % sca)
             else:
                 dataSource = None
 
         if ad8:
-            dataSource = gdal.Open(ad8, 1)
+            dataSource = gdal.Open(ad8, GA_ReadOnly)
             if not dataSource:
-                print("Not a valid tif file (%s) provided for '--ad8' parameter." % ad8)
-                return False
+                raise utils.ValidationException("File open error. Not a valid file (%s) provided for '--ad8' "
+                                                "parameter." % ad8)
             else:
                 dataSource = None
 
-
-        dataSource = gdal.Open(sac, 1)
+        dataSource = gdal.Open(sac, GA_ReadOnly)
         if not dataSource:
-            print("Not a valid tif file (%s) provided for '--sac' parameter." % sac)
-            return False
+            raise utils.ValidationException("File open error. Not a valid file (%s) provided for '--sac' parameter."
+                                            % sac)
         else:
             dataSource = None
-    except Exception as e:
-        print(e.message)
-        return False
+    except Exception as ex:
+        raise utils.ValidationException(ex.message)
 
     spe_dir = os.path.dirname(os.path.abspath(spe))
     if not os.path.exists(spe_dir):
-        print ("File path '(%s)' for tif output file (parameter '--spe') does not exist." % spe_dir)
-        return False
-
-    return True
+        raise utils.ValidationException("File path '(%s)' for output file (parameter '--spe') does not exist."
+                                        % spe_dir)
 
 
 def _initialize_output_raster_file(base_raster_file, output_raster_file):
@@ -139,7 +123,7 @@ def _initialize_output_raster_file(base_raster_file, output_raster_file):
     :param output_raster_file: name and location of of the output raster file to be created
     :return: None
     """
-    base_raster = gdal.Open(base_raster_file, 1)
+    base_raster = gdal.Open(base_raster_file, GA_ReadOnly)
     geotransform = base_raster.GetGeoTransform()
     originX = geotransform[0]
     originY = geotransform[3]
@@ -148,7 +132,7 @@ def _initialize_output_raster_file(base_raster_file, output_raster_file):
     rows = base_raster.RasterYSize
     cols = base_raster.RasterXSize
 
-    driver = gdal.GetDriverByName(GDALFileDriver.TifFile())
+    driver = gdal.GetDriverByName(utils.GDALFileDriver.TifFile())
     number_of_bands = 1
     outRaster = driver.Create(output_raster_file, cols, rows, number_of_bands, gdal.GDT_Float32)
     outRaster.SetGeoTransform((originX, pixelWidth, 0, originY, 0, pixelHeight))
@@ -157,7 +141,7 @@ def _initialize_output_raster_file(base_raster_file, output_raster_file):
     grid_initial_data = np.zeros((rows, cols), dtype=np.float32)
     grid_initial_data[:] = 0.0
     outband = outRaster.GetRasterBand(1)
-    outband.SetNoDataValue(NO_DATA_VALUE)
+    outband.SetNoDataValue(utils.NO_DATA_VALUE)
     outband.WriteArray(grid_initial_data)
 
     # set the projection of the tif file same as that of the base_raster file
@@ -242,7 +226,7 @@ def _compute_upstream_sediment(sac, ad8, sca, net):
     :param net: Stream network shapefile
     :return: None
     """
-    driver = ogr.GetDriverByName(GDALFileDriver.ShapeFile())
+    driver = ogr.GetDriverByName(utils.GDALFileDriver.ShapeFile())
     dataSource = driver.Open(net, 1)
     layer = dataSource.GetLayer()
     layerDefn = layer.GetLayerDefn()
@@ -357,7 +341,7 @@ def _compute_direct_stream_sediment(net):
     :return: None
     """
 
-    driver = ogr.GetDriverByName(GDALFileDriver.ShapeFile())
+    driver = ogr.GetDriverByName(utils.GDALFileDriver.ShapeFile())
     dataSource = driver.Open(net, 1)
     layer = dataSource.GetLayer()
     layerDefn = layer.GetLayerDefn()
@@ -390,10 +374,10 @@ def _compute_direct_stream_sediment(net):
                fld_index_us_link_no1,
                fld_index_us_link_no2,
                fld_index_cont_area]):
-            raise "Invalid stream network shapefile."
+            raise Exception("Invalid stream network shapefile.")
 
-    except:
-        pass
+    except Exception as ex:
+        raise  utils.ValidationException(ex.message)
 
     # add a new field (column) 'SedDir' to the attribute table
     layer.CreateField(ogr.FieldDefn('SedDir', ogr.OFTReal))
@@ -451,7 +435,8 @@ def _compute_direct_stream_sediment(net):
                 link_ds_area = ds_areas[list_index]
 
                 # get the sedaccum and dsarea for the link upstream 2
-                link_up2_sed_accum, link_up2_ds_area = _get_upstream_sed_accum_and_area(up2_links[list_index], links, sed_accums, ds_areas)
+                link_up2_sed_accum, link_up2_ds_area = _get_upstream_sed_accum_and_area(up2_links[list_index],
+                                                                                        links, sed_accums, ds_areas)
 
                 sac_dir = link_sed_accum - link_up2_sed_accum
                 dir_area = link_ds_area - link_up2_ds_area
@@ -462,10 +447,12 @@ def _compute_direct_stream_sediment(net):
                 link_ds_area = ds_areas[list_index]
 
                 # get the sedaccum and dsarea for the link upstream 1
-                link_up1_sed_accum, link_up1_ds_area = _get_upstream_sed_accum_and_area(up1_links[list_index], links, sed_accums, ds_areas)
+                link_up1_sed_accum, link_up1_ds_area = _get_upstream_sed_accum_and_area(up1_links[list_index],
+                                                                                        links, sed_accums, ds_areas)
 
                 # get the sedaccum and dsarea for the link upstream 2
-                link_up2_sed_accum, link_up2_ds_area = _get_upstream_sed_accum_and_area(up2_links[list_index], links, sed_accums, ds_areas)
+                link_up2_sed_accum, link_up2_ds_area = _get_upstream_sed_accum_and_area(up2_links[list_index],
+                                                                                        links, sed_accums, ds_areas)
 
                 sac_dir = link_sed_accum - link_up1_sed_accum - link_up2_sed_accum
                 dir_area = link_ds_area - link_up1_ds_area - link_up2_ds_area
@@ -526,6 +513,6 @@ if __name__ == '__main__':
         main()
         sys.exit(0)
     except Exception as e:
-        print "Stream sediment computation failed."
+        print("Stream sediment computation failed.")
         print(e.message)
         sys.exit(1)
