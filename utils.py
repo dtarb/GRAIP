@@ -1,10 +1,14 @@
 __author__ = 'Pabitra'
 
 from osgeo import ogr, gdal, osr
+from gdalconst import *
 import numpy as np
 
 NO_DATA_VALUE = -9999
 MS_ACCESS_CONNECTION = "Driver={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=%s;"
+
+class ValidationException(Exception):
+    pass
 
 class GDALFileDriver(object):
 
@@ -20,13 +24,16 @@ class GDALFileDriver(object):
 def initialize_output_raster_file(base_raster_file, output_raster_file, initial_data=0.0, data_type=gdal.GDT_Float32):
 
     """
-    Creates an empty raster file based on the dimension, projection, and cell size of an input raster file
+    Creates an raster file based on the dimension, projection, and cell size of an input raster file using specified
+    initial data value of specified data type
 
-    :param base_raster_file: raster file based on which the new empty raster file to be created
+    :param base_raster_file: raster file based on which the new raster file to be created with initial_data
     :param output_raster_file: name and location of of the output raster file to be created
+    :param initial_data: data to be used in creating the output raster file
+    :param data_type: GDAL data type to be used in creating the output raster file
     :return: None
     """
-    base_raster = gdal.Open(base_raster_file, 1)
+    base_raster = gdal.Open(base_raster_file, GA_ReadOnly)
     geotransform = base_raster.GetGeoTransform()
     originX = geotransform[0]
     originY = geotransform[3]
@@ -37,7 +44,7 @@ def initialize_output_raster_file(base_raster_file, output_raster_file, initial_
 
     driver = gdal.GetDriverByName(GDALFileDriver.TifFile())
     number_of_bands = 1
-    outRaster = driver.Create(output_raster_file, cols, rows, number_of_bands, gdal.GDT_Float32)
+    outRaster = driver.Create(output_raster_file, cols, rows, number_of_bands, data_type)
     outRaster.SetGeoTransform((originX, pixelWidth, 0, originY, 0, pixelHeight))
 
     # initialize the newly created tif file with zeros
