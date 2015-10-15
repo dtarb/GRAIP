@@ -1,12 +1,23 @@
 __author__ = 'Pabitra'
-import arcpy
+
 import os
 import subprocess
 
+import arcpy
+
 # get the input parameters
 slp_raster_file = arcpy.GetParameterAsText(0)
+desc = arcpy.Describe(slp_raster_file)
+slp_raster_file = str(desc.catalogPath)
+
 sca_raster_file = arcpy.GetParameterAsText(1)
+desc = arcpy.Describe(sca_raster_file)
+sca_raster_file = str(desc.catalogPath)
+
 cal_raster_file = arcpy.GetParameterAsText(2)
+desc = arcpy.Describe(cal_raster_file)
+cal_raster_file = str(desc.catalogPath)
+
 capl_text_file = arcpy.GetParameterAsText(3)
 dp_shapefile = arcpy.GetParameterAsText(4)
 db_file = arcpy.GetParameterAsText(5)
@@ -19,7 +30,7 @@ is_delete_intermediate_output_files = arcpy.GetParameterAsText(11)
 
 # create the cis_inputs.txt file from the provided above parameters
 this_script_dir = os.path.dirname(os.path.realpath(__file__))
-#this_script_dir = '"' + this_script_dir + '"'
+
 si_control_file = os.path.join(temp_output_files_directory, 'Si_Control.txt')
 si_control_file = r'' + si_control_file
 
@@ -50,7 +61,6 @@ with open(si_control_file, 'w') as file_obj:
         file_obj.write('is_delete_intermediate_output_files=False\n')
 
 # put quotes around file paths in case they have spaces
-#this_script_dir = '"' + this_script_dir + '"'
 si_control_file = '"' + si_control_file + '"'
 py_script_to_execute = os.path.join(this_script_dir, 'StabilityIndex.py')
 py_script_to_execute = '"' + py_script_to_execute + '"'
