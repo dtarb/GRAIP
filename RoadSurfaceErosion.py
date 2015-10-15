@@ -9,6 +9,8 @@ import sys
 import click
 import os
 from scipy import interpolate
+from gdalconst import *
+import utils
 
 # TODO: Need to find out how to catch gdal exceptions
 
@@ -65,9 +67,7 @@ def main(dp, rd, mdb, z, dpsi, sc):
     :param --sc: A flag if provided sediment production will be writen to grid file for only stream connected drain points, otherwise for all drain points
     :return: None
     """
-    if not _validate_args(dp, rd, z, mdb, dpsi):
-        sys.exit(1)
-
+    _validate_args(dp, rd, z, mdb, dpsi)
     input_dem = z
 
     # check if the dir path is missing for the database file, then add the current dir path to the file name
@@ -183,14 +183,15 @@ def compute_length_elevation_interpolation(rd_shapefile, input_dem):
     dem_nx = dem.RasterXSize
     dem_ny = dem.RasterYSize
     gt = dem.GetGeoTransform()
-    dem_originX = gt[0]
-    dem_originY = gt[3]
-    dem_pixelWidth = gt[1]
-    dem_pixelHeight = gt[5]
     dem_band_array = dem.GetRasterBand(1).ReadAsArray()
 
     # Compute mid-point grid spacings
     # ref: http://gis.stackexchange.com/questions/7611/bilinear-interpolation-of-point-data-on-a-raster-in-python
+    # gt[0] dem originX
+    # gt[3] dem originY
+    # gt[1] dem cell width (in pixel)
+    # gt[5] dem cell height (in pixel)
+
     ax = array([gt[0] + ix*gt[1] + gt[1]/2.0 for ix in range(dem_nx)])
     ay = array([gt[3] + iy*gt[5] + gt[5]/2.0 for iy in range(dem_ny)])
     bilinterp = interpolate.interp2d(ax, ay, dem_band_array, kind='linear')
@@ -254,11 +255,9 @@ def compute_length_elevation_interpolation(rd_shapefile, input_dem):
 def _validate_args(dp, rd, z, mdb, dpsi):
     driver = ogr.GetDriverByName(GDALFileDriver.ShapeFile())
     try:
-        dataSource = driver.Open(dp, 1)
+        dataSource = driver.Open(dp, GA_ReadOnly)
         if not dataSource:
-            #raise Exception("Not a valid shape file (%s)" % rd)
-            print("Not a valid shape file (%s) provided for parameter --dp." % dp)
-            return False
+            raise utils.ValidationException("Not a valid shape file (%s) provided for parameter --dp." % dp)
         else:
             dataSource.Destroy()
     except Exception as e:
@@ -266,11 +265,9 @@ def _validate_args(dp, rd, z, mdb, dpsi):
         return False
 
     try:
-        dataSource = driver.Open(rd, 1)
+        dataSource = driver.Open(rd, GA_ReadOnly)
         if not dataSource:
-            #raise Exception("Not a valid shape file (%s)" % rd)
-            print("Not a valid shape file (%s) provided for parameter --rd." % rd)
-            return False
+            raise utils.ValidationException("Not a valid shape file (%s) provided for parameter --rd." % rd)
         else:
             dataSource.Destroy()
     except Exception as e:
@@ -279,27 +276,22 @@ def _validate_args(dp, rd, z, mdb, dpsi):
 
     dpsi_dir = os.path.dirname(os.path.abspath(dpsi))
     if not os.path.exists(dpsi_dir):
-        print ("File path '(%s)' for grid output file (parameter --dpsi) does not exist." % dpsi_dir)
-        return False
-
+        raise utils.ValidationException("File path '(%s)' for output file (parameter --dpsi) does not exist." % dpsi_dir)
     try:
         if not os.path.dirname(mdb):
             mdb = os.path.join(os.getcwd(), mdb)
 
         conn = pyodbc.connect(MS_ACCESS_CONNECTION % mdb)
         conn.close()
-    except pyodbc.Error as e:
-        print(e)
-        return False
+    except pyodbc.Error as ex:
+        raise utils.ValidationException(ex.message)
 
     try:
         dem = gdal.Open(z)
         dem = None
-    except Exception as e:
-        print(e.message)
-        return False
+    except Exception as ex:
+        raise utils.ValidationException(ex.message)
 
-    return True
 
 def _get_coordinate_to_elevation(x, y, dem):
     """
@@ -371,25 +363,29 @@ def compute_road_sediment_production(rd_shapefile, graip_db):
         roadlines_rows = cursor.execute("SELECT * FROM RoadLines").fetchall()
 
         for row in roadlines_rows:
-            roadnetwork_row = cursor.execute("SELECT * FROM RoadNetworkDefinitions WHERE RoadNetworkID=%d" % row.RoadNetworkID).fetchone()
+            roadnetwork_row = cursor.execute("SELECT * FROM RoadNetworkDefinitions WHERE RoadNetworkID=%d"
+                                             % row.RoadNetworkID).fetchone()
             if not roadnetwork_row:
                 base_rate = 75
             else:
                 base_rate = roadnetwork_row.BaseRate
 
-            flowpathvegdef_row = cursor.execute("SELECT * FROM FlowPathVegDefinitions WHERE FlowPathVegID=%d" % row.FlowPathVeg1ID).fetchone()
+            flowpathvegdef_row = cursor.execute("SELECT * FROM FlowPathVegDefinitions WHERE FlowPathVegID=%d"
+                                                % row.FlowPathVeg1ID).fetchone()
             if not flowpathvegdef_row:
                 ditch_veg_multiplier_1 = 1
             else:
                 ditch_veg_multiplier_1 = flowpathvegdef_row.Multiplier
 
-            flowpathvegdef_row = cursor.execute("SELECT * FROM FlowPathVegDefinitions WHERE FlowPathVegID=%d" % row.FlowPathVeg2ID).fetchone()
+            flowpathvegdef_row = cursor.execute("SELECT * FROM FlowPathVegDefinitions WHERE FlowPathVegID=%d"
+                                                % row.FlowPathVeg2ID).fetchone()
             if not flowpathvegdef_row:
                 ditch_veg_multiplier_2 = 1
             else:
                 ditch_veg_multiplier_2 = flowpathvegdef_row.Multiplier
 
-            surfacetypedef_row = cursor.execute("SELECT * FROM SurfaceTypeDefinitions WHERE SurfaceTypeID=%d" % row.SurfaceTypeID).fetchone()
+            surfacetypedef_row = cursor.execute("SELECT * FROM SurfaceTypeDefinitions WHERE SurfaceTypeID=%d"
+                                                % row.SurfaceTypeID).fetchone()
 
             if not surfacetypedef_row:
                 surface_multiplier = 1
@@ -423,7 +419,8 @@ def compute_road_sediment_production(rd_shapefile, graip_db):
                 row.TotSedDel = sed_prod_1 * stream_con_1 + sed_prod_2 * stream_con_2
                 row.Length = road_length
 
-                update_sql = "UPDATE RoadLines SET SedProd1=?, SedProd2=?, TotSedProd=?, TotSedDel=?, Length=? WHERE GRAIPRID=?"
+                update_sql = "UPDATE RoadLines SET SedProd1=?, SedProd2=?, TotSedProd=?, TotSedDel=?, Length=? " \
+                             "WHERE GRAIPRID=?"
                 data = (row.SedProd1, row.SedProd2, row.TotSedProd, row.TotSedDel, row.Length, row.GRAIPRID)
                 cursor.execute(update_sql, data)
 
@@ -470,7 +467,8 @@ def compute_drainpoint_sediment_production(graip_db):
         dp_rows = cursor.execute("SELECT * FROM DrainPoints ORDER BY GRAIPDID").fetchall()
         for dp_row in dp_rows:
             # sum sediment and road length for the first side of the road
-            sql_select = "SELECT SUM(SedProd1) As SumSedProd1, SUM(Length) As SumLength FROM RoadLines WHERE GRAIPDID1=? GROUP BY GRAIPDID1"
+            sql_select = "SELECT SUM(SedProd1) As SumSedProd1, SUM(Length) As SumLength FROM RoadLines " \
+                         "WHERE GRAIPDID1=? GROUP BY GRAIPDID1"
             dp_row_sum = cursor.execute(sql_select, dp_row.GRAIPDID).fetchone()
             e_length_dp = 0
             sed_prod_1 = 0
@@ -478,7 +476,8 @@ def compute_drainpoint_sediment_production(graip_db):
                 sed_prod_1 = dp_row_sum.SumSedProd1
                 e_length_dp = dp_row_sum.SumLength / 2  # divide by 2 since it is only half of the road
 
-            sql_select = "SELECT SUM(SedProd2) As SumSedProd2, SUM(Length) As SumLength FROM RoadLines WHERE GRAIPDID2=? GROUP BY GRAIPDID2"
+            sql_select = "SELECT SUM(SedProd2) As SumSedProd2, SUM(Length) As SumLength FROM RoadLines " \
+                         "WHERE GRAIPDID2=? GROUP BY GRAIPDID2"
             dp_row_sum = cursor.execute(sql_select, dp_row.GRAIPDID).fetchone()
             sed_prod_2 = 0
             if dp_row_sum:
@@ -523,7 +522,8 @@ def create_drainpoint_weighted_grid(input_dem, graip_db, dpsi_gridfile, dp_shape
     :param graip_db: Path to graip database file
     :param dpsi_gridfile: Path the output grid file to which sediment data will be writen
     :param dp_shapefile: Path to drainpoint shapefile
-    :param is_stream_connected: Flag(True/False) to indicate if sediment data grid file be created for all drainpoints or only stream connected points
+    :param is_stream_connected: Flag(True/False) to indicate if sediment data grid file be created for all
+    drainpoints or only stream connected points
     :return: None
     """
 
@@ -593,7 +593,8 @@ def create_drainpoint_weighted_grid(input_dem, graip_db, dpsi_gridfile, dp_shape
                 #print "Writing to grid file for drainpoint:%d  value:%s row:%d col:%d" % (graipdid, sed_array[0][0], row, col)
 
             # find the drain point matching row from the DrainPoints db table
-            dp_row = cursor.execute("SELECT SedProd, StreamConnectID FROM DrainPoints WHERE GRAIPDID=?", graipdid).fetchone()
+            dp_row = cursor.execute("SELECT SedProd, StreamConnectID FROM DrainPoints WHERE GRAIPDID=?",
+                                    graipdid).fetchone()
             if is_stream_connected:
                 if dp_row.StreamConnectID == 2:
                     _write_sed_accum_to_grid()
