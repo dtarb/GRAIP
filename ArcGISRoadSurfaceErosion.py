@@ -1,18 +1,27 @@
 __author__ = 'Pabitra'
-import arcpy
-from arcpy import env
+
 import os
 import subprocess
-
+import arcpy
 
 # Set overwrite option
 arcpy.env.overwriteOutput = True
 
 # get the input parameters
 dp_shapefile = arcpy.GetParameterAsText(0)
+desc = arcpy.Describe(dp_shapefile)
+dp_shapefile = str(desc.catalogPath)
+
 rd_shapefile = arcpy.GetParameterAsText(1)
+desc = arcpy.Describe(rd_shapefile)
+rd_shapefile = str(desc.catalogPath)
+
 graip_db_file = arcpy.GetParameterAsText(2)
+
 dem_grid_file = arcpy.GetParameterAsText(3)
+desc = arcpy.Describe(dem_grid_file)
+dem_grid_file = str(desc.catalogPath)
+
 dpsi_raster_file = arcpy.GetParameterAsText(4)
 is_stream_connected = arcpy.GetParameterAsText(5)
 
@@ -67,7 +76,6 @@ for lyr in arcpy.mapping.ListLayers(mxd, "", df):
     if lyr.name.lower() == roadlines_layer.lower() or lyr.name.lower() == drainpoints_layer.lower() :
         # delete layer object from memory
         arcpy.Delete_management(lyr.name)
-        #arcpy.AddMessage("Layer removed")
 
 # create feature layer from the roadlines shape file
 arcpy.MakeFeatureLayer_management(rd_shapefile, roadlines_layer)
