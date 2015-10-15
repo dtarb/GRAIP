@@ -1,12 +1,14 @@
 __author__ = 'Pabitra'
+import os
+import sys
+import subprocess
+
 from osgeo import ogr, gdal, osr
 from gdalconst import *
 import numpy as np
 import pyodbc
-import sys
 import click
-import os
-import subprocess
+
 import utils
 
 # TODO: Need to find out how to catch gdal exceptions
@@ -21,23 +23,28 @@ class IntermediateFiles(object):
     si_control_file = 'Si_Control.txt'
 
 @click.command()
-@click.option('--params', default=r"E:\Graip\GRAIPPythonTools\demo\demo_CSI\csi_inputs_gis_ri.txt", type=click.Path(exists=True))
+#@click.option('--params', default=r"E:\Graip\GRAIPPythonTools\demo\demo_CSI\Data\temp_output_files\Si_control.txt", type=click.Path(exists=True))
+@click.option('--params', default=None, type=click.Path(exists=True))
 def main(params):
     params_dict = _get_initialized_parameters_dict()
-    if not _validate_args(params, params_dict):
-        sys.exit(1)
+    _validate_args(params, params_dict)
 
     base_raster_file = params_dict[ParameterNames.dinf_slope_file]
     if params_dict[ParameterNames.demang_file]:
-        temp_raster_file_weight_min = os.path.join(params_dict[ParameterNames.temporary_output_files_directory], IntermediateFiles.weight_min_raster)
-        temp_raster_file_weight_max = os.path.join(params_dict[ParameterNames.temporary_output_files_directory], IntermediateFiles.weight_max_raster)
+        temp_raster_file_weight_min = os.path.join(params_dict[ParameterNames.temporary_output_files_directory],
+                                                   IntermediateFiles.weight_min_raster)
+        temp_raster_file_weight_max = os.path.join(params_dict[ParameterNames.temporary_output_files_directory],
+                                                   IntermediateFiles.weight_max_raster)
         utils.initialize_output_raster_file(base_raster_file, temp_raster_file_weight_min)
         utils.initialize_output_raster_file(base_raster_file, temp_raster_file_weight_max)
         _update_draintypedefinitions_table(params_dict)
         _create_weight_grids_from_points(temp_raster_file_weight_min, temp_raster_file_weight_max, params_dict)
+
         # generate catchment areas
-        temp_raster_file_sca_min = os.path.join(params_dict[ParameterNames.temporary_output_files_directory], IntermediateFiles.sca_min_raster)
-        temp_raster_file_sca_max = os.path.join(params_dict[ParameterNames.temporary_output_files_directory], IntermediateFiles.sca_max_raster)
+        temp_raster_file_sca_min = os.path.join(params_dict[ParameterNames.temporary_output_files_directory],
+                                                IntermediateFiles.sca_min_raster)
+        temp_raster_file_sca_max = os.path.join(params_dict[ParameterNames.temporary_output_files_directory],
+                                                IntermediateFiles.sca_max_raster)
         _taudem_area_dinf(temp_raster_file_weight_min, params_dict[ParameterNames.demang_file], temp_raster_file_sca_min)
         _taudem_area_dinf(temp_raster_file_weight_max, params_dict[ParameterNames.demang_file], temp_raster_file_sca_max)
 
@@ -115,26 +122,15 @@ def _validate_args(params, params_dict):
                     try:
                         key, value = line.split('=')
                         if key not in params_dict:
-                            print("Invalid parameter name in the input file (%s)." % params)
-                            return False
+                            raise utils.ValidationException("Invalid parameter name in the input file (%s)." % params)
                         else:
                             params_dict[key] = value.rstrip('\n')
                     except:
-                        print "Input control file (%s) has invalid data format." % params
-                        return False
-
-    # if params_dict[ParameterNames.dinf_sca_min_file] and not params_dict[ParameterNames.dinf_sca_max_file]:
-    #     print "Input control file (%s) has invalid data format." % params
-    #     return False
-
-    # if not params_dict[ParameterNames.dinf_sca_min_file] and params_dict[ParameterNames.dinf_sca_max_file]:
-    #     print "Input control file (%s) has invalid data format." % params
-    #     return False
+                        raise utils.ValidationException("Input control file (%s) has invalid data format." % params)
 
     if params_dict[ParameterNames.demang_file]:
         if len(params_dict[ParameterNames.selected_drainpoint_types]) == 0:
-            print "Selected drain point types missing."
-            return False
+            raise utils.ValidationException("Drain point types are missing.")
 
     for key in params_dict:
         if not params_dict[key]:
@@ -148,16 +144,17 @@ def _validate_args(params, params_dict):
             # if key not in (ParameterNames.demang_file, ParameterNames.dinf_sca_min_file,
             #                ParameterNames.dinf_sca_max_file, ParameterNames.drain_points_file, ParameterNames.mdb):
             if key not in (ParameterNames.demang_file, ParameterNames.drain_points_file, ParameterNames.mdb):
-                print("Invalid input control file (%s). Value for one or more parameters is missing." % params)
-                return False
+                raise utils.ValidationException("Invalid input control file (%s). Value for one or more parameters is "
+                                                "missing." % params)
 
         if key in (ParameterNames.road_width, ParameterNames.min_terrain_recharge, ParameterNames.max_terrain_recharge,
-                   ParameterNames.min_additional_runoff, ParameterNames.max_additional_runoff, ParameterNames.gravity, ParameterNames.rhow):
+                   ParameterNames.min_additional_runoff, ParameterNames.max_additional_runoff, ParameterNames.gravity,
+                   ParameterNames.rhow):
             try:
                 float(params_dict[key])
             except:
-                print("Invalid input control file (%s). Parameter (%s) needs to have a numeric value." % (params, key))
-                return False
+                raise utils.ValidationException("Invalid input control file (%s). Parameter (%s) needs to have a "
+                                                "numeric value." % (params, key))
 
         # check that certain parameters that have file path values, that those file exists
         if key in (ParameterNames.drain_points_file, ParameterNames.demang_file, ParameterNames.cal_csv_file,
@@ -171,8 +168,8 @@ def _validate_args(params, params_dict):
                 input_file = os.path.join(os.getcwd(), params_dict[key])
 
             if not os.path.isfile(input_file):
-                print("Invalid input control file (%s). %s file can't be found." % (params, params_dict[key]))
-                return False
+                raise utils.ValidationException("Invalid input control file (%s). %s file can't be found." %
+                                                (params, params_dict[key]))
 
         # Test that the drainpoints file is a shapefile if it has been provided
         if key == ParameterNames.drain_points_file:
@@ -180,15 +177,13 @@ def _validate_args(params, params_dict):
                 try:
                     dataSource = driver.Open(params_dict[key], 1)
                     if not dataSource:
-                        #raise Exception("Not a valid shape file (%s)" % rd)
-                        print("Invalid input control file (%s). Not a valid shape file (%s) provided for parameter (%s)."
-                              % (params, params_dict[key], key))
-                        return False
+                        raise utils.ValidationException("Invalid input control file (%s). Not a valid shape file (%s) "
+                                                        "provided for parameter (%s)." % (params, params_dict[key], key))
+
                     else:
                         dataSource.Destroy()
-                except Exception as e:
-                    print(e.message)
-                    return False
+                except Exception as ex:
+                    raise utils.ValidationException(ex.message)
 
         # check that all other input grid files can be opened.
         if key in (ParameterNames.demang_file, ParameterNames.dinf_sca_file, ParameterNames.dinf_slope_file,
@@ -207,9 +202,8 @@ def _validate_args(params, params_dict):
             try:
                 dem = gdal.Open(input_file)
                 dem = None
-            except Exception as e:
-                print(e.message)
-                return False
+            except Exception as ex:
+                raise utils.ValidationException(ex.message)
 
         # check that the output grid file path exists
         #if key in (ParameterNames.csi_grid_file, ParameterNames.sat_grid_file, ParameterNames.dinf_sca_min_file, ParameterNames.dinf_sca_max_file):
@@ -217,34 +211,30 @@ def _validate_args(params, params_dict):
             if params_dict[key]:
                 grid_file_dir = os.path.dirname(os.path.abspath(params_dict[key]))
                 if not os.path.exists(grid_file_dir):
-                    print ("Invalid output file (%s). File path (%s) for grid output file does not exist. "
-                           "Invalid parameter (%s) value." % (params, grid_file_dir, key))
-                    return False
+                    raise utils.ValidationException("Invalid output file (%s). File path (%s) for grid output file "
+                                                    "does not exist. Invalid parameter (%s) value."
+                                                    % (params, grid_file_dir, key) )
 
         if key == ParameterNames.is_delete_intermediate_output_files:
             if params_dict[ParameterNames.is_delete_intermediate_output_files] not in ('True', 'False'):
-                print("Invalid input control file. Invalid value for parameter (%s). "
-                      "Parameter value should be either True or False ", key)
-                return False
+                raise utils.ValidationException("Invalid input control file. Invalid value for parameter (%s). "
+                                                "Parameter value should be either True or False ", key)
 
     # check that the graip database file has been provided if either the dmang file has been
     # provided (Dinf flow direction raster)or the drainpoint shapefile has been provided
     if params_dict[ParameterNames.demang_file] or params_dict[ParameterNames.drain_points_file]:
         if not params_dict[ParameterNames.mdb]:
             if params_dict[ParameterNames.demang_file]:
-                print("Graip database file is missing. Database file is needed for considering road "
-                      "impact in stability index computation.")
-                return False
+                raise utils.ValidationException("Graip database file is missing. Database file is needed for "
+                                                "considering road impact in stability index computation." )
             elif params_dict[ParameterNames.drain_points_file]:
-                print("Graip database file is missing. Database file is needed for populating the SI field of the"
-                      "drainpoints table.")
-                return False
+                raise utils.ValidationException("Graip database file is missing. Database file is needed for populating "
+                                                "the SI field of the drainpoints table." )
 
     # check that 'temporary_output_files_directory' is in fact a directory
     if not os.path.isdir(params_dict[ParameterNames.temporary_output_files_directory]):
-        print("The specified temporary output files directory (%s) is not a directory."
-              % params_dict[ParameterNames.temporary_output_files_directory])
-        return False
+        raise utils.ValidationException("The specified temporary output files directory (%s) is not a directory." %
+                                        params_dict[ParameterNames.temporary_output_files_directory])
 
     # check that the graip database file exists and can be opened
     try:
@@ -265,27 +255,26 @@ def _validate_args(params, params_dict):
                 params_dict[ParameterNames.selected_drainpoint_types] = params_dict[ParameterNames.selected_drainpoint_types].split(",")
                 for drain_type_name in params_dict[ParameterNames.selected_drainpoint_types]:
                     if drain_type_name not in valid_drainpoint_type_names:
-                        print("Invalid drain type name (%s) found." % drain_type_name)
-                        return False
+                        raise utils.ValidationException("Invalid drain type name (%s) found." % drain_type_name)
+
             else:
                 conn.close()
-    except pyodbc.Error as e:
-        print(e)
-        return False
-
-    return True
+    except pyodbc.Error as ex:
+        raise utils.ValidationException(ex.message)
 
 
 def _create_weight_grids_from_points(weight_min_raster_file, weight_max_raster_file, params_dict):
     # Reference: c++ function: createweightgridfrompoints
 
     """
-    Creates the temporary weight grids (min adn max) to be used with TauDEM areadinf function
-    :param weight_min_raster_file:
-    :param weight_max_raster_file:
-    :param params_dict:
-    :return:
+    Creates the temporary weight grids (min and max) to be used with TauDEM areadinf function
+
+    :param weight_min_raster_file: temporary weight grid file to which minimum weight data needs to be written
+    :param weight_max_raster_file: temporary weight grid file to which maximum weight data needs to be written
+    :param params_dict: a dictionary containing user parameter inputs for stability index computation
+    :return: None
     """
+
     driver = ogr.GetDriverByName(utils.GDALFileDriver.ShapeFile())
     data_source = driver.Open(params_dict[ParameterNames.drain_points_file], 1)
     layer = data_source.GetLayer()
@@ -293,8 +282,9 @@ def _create_weight_grids_from_points(weight_min_raster_file, weight_max_raster_f
     try:
         layer_defn.GetFieldIndex('GRAIPDID')
     except:
-        print ("Invalid drain points shape file. Attribute 'GRAIPDID' is missing.")
-        sys.exit(1)
+        data_source.Destroy()
+        raise utils.ValidationException("Invalid drain points shape file. Attribute 'GRAIPDID' is missing in "
+                                        "this file.")
 
     try:
         conn = pyodbc.connect(utils.MS_ACCESS_CONNECTION % params_dict[ParameterNames.mdb])
@@ -397,11 +387,9 @@ def _generate_combined_stability_index_grid(params_dict):
           ' -cal ' + params_dict[ParameterNames.cal_grid_file] + \
           ' -si ' + params_dict[ParameterNames.csi_grid_file] + \
           ' -sat ' + params_dict[ParameterNames.sat_grid_file] + \
-          ' -par ' + params_dict[ParameterNames.min_terrain_recharge] + ' ' + params_dict[ParameterNames.max_terrain_recharge] + ' ' + params_dict[ParameterNames.gravity] + ' ' + params_dict[ParameterNames.rhow]
-
-    # if params_dict[ParameterNames.dinf_sca_min_file] and params_dict[ParameterNames.dinf_sca_max_file]:
-    #     cmd += ' -scamin ' + params_dict[ParameterNames.dinf_sca_min_file] + \
-    #            ' -scamax ' + params_dict[ParameterNames.dinf_sca_max_file]
+          ' -par ' + params_dict[ParameterNames.min_terrain_recharge] + ' ' +\
+          params_dict[ParameterNames.max_terrain_recharge] + ' ' + params_dict[ParameterNames.gravity] + ' ' + \
+          params_dict[ParameterNames.rhow]
 
     if params_dict[ParameterNames.demang_file]:
         cmd += ' -scamin ' + os.path.join(params_dict[ParameterNames.temporary_output_files_directory], IntermediateFiles.sca_min_raster) + \
@@ -536,6 +524,6 @@ if __name__ == '__main__':
         main()
         sys.exit(0)
     except Exception as e:
-        print "Combined stability index computation failed."
+        print("Combined stability index computation failed.\n")
         print(e.message)
         sys.exit(1)
