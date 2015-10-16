@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "GRAIP-2 Python Tools"
-#define MyAppVersion "1.0"
+#define MyAppVersion "1.1"
 #define MyAppPublisher "Utah State University"
 #define MyAppURL "http://www.neng.usu.edu/cee/faculty/dtarb/tarsoftware.html"
 
@@ -23,30 +23,49 @@ DefaultGroupName={#MyAppName}
 OutputBaseFilename=setup
 Compression=lzma
 SolidCompression=yes
+; "ArchitecturesInstallIn64BitMode=x64" requests that the install be
+; done in "64-bit mode" on x64, meaning it should use the native
+; 64-bit Program Files directory and the 64-bit view of the registry.
+; On all other architectures it will install in "32-bit mode".
+ArchitecturesInstallIn64BitMode=x64
+WizardSmallImageFile=graip.bmp
+; Don't show the welcome wizard page  and ready to install page
+DisableWelcomePage=yes
+DisableReadyPage=yes
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Files]
-Source: "E:\SoftwareProjects\GRAIPPythonTools\setup_tools\SourceFiles\ArcGISRoadSurfaceErosion.py"; DestDir: "{app}\PythonTools"; Flags: ignoreversion
-Source: "E:\SoftwareProjects\GRAIPPythonTools\setup_tools\SourceFiles\ArcGisStreamSedimentInput.py"; DestDir: "{app}\PythonTools"; Flags: ignoreversion
-Source: "E:\SoftwareProjects\GRAIPPythonTools\setup_tools\SourceFiles\ArcGISStabilityIndex.py"; DestDir: "{app}\PythonTools"; Flags: ignoreversion
-Source: "E:\SoftwareProjects\GRAIPPythonTools\setup_tools\SourceFiles\ArcGISStabilityIndexWithRoadImpact.py"; DestDir: "{app}\PythonTools"; Flags: ignoreversion
-Source: "E:\SoftwareProjects\GRAIPPythonTools\setup_tools\SourceFiles\consolidateShp.dll"; DestDir: "{app}\Preprocessor"; Flags: restartreplace ignoreversion regserver 32bit
-Source: "E:\SoftwareProjects\GRAIPPythonTools\setup_tools\SourceFiles\consolidateShp.dll"; DestDir: "{app}\Preprocessor"; Flags: restartreplace ignoreversion regserver 64bit; Check: IsWin64
-Source: "E:\SoftwareProjects\GRAIPPythonTools\setup_tools\SourceFiles\demo.zip"; DestDir: "{app}\Documentation"; Flags: ignoreversion
-Source: "E:\SoftwareProjects\GRAIPPythonTools\setup_tools\SourceFiles\GRAIP Tools.tbx"; DestDir: "{app}\PythonTools"; Flags: ignoreversion
-Source: "E:\SoftwareProjects\GRAIPPythonTools\setup_tools\SourceFiles\GRAIP.mdb"; DestDir: "{app}\Preprocessor\graip db"; Flags: ignoreversion
-Source: "E:\SoftwareProjects\GRAIPPythonTools\setup_tools\SourceFiles\GRAIPPreprocessor.exe"; DestDir: "{app}\Preprocessor"; Flags: ignoreversion
-Source: "E:\SoftwareProjects\GRAIPPythonTools\setup_tools\SourceFiles\RoadSurfaceErosion.py"; DestDir: "{app}\PythonTools"; Flags: ignoreversion
-Source: "E:\SoftwareProjects\GRAIPPythonTools\setup_tools\SourceFiles\StreamSedimentInput.py"; DestDir: "{app}\PythonTools"; Flags: ignoreversion
-Source: "E:\SoftwareProjects\GRAIPPythonTools\setup_tools\SourceFiles\StabilityIndex.py"; DestDir: "{app}\PythonTools"; Flags: ignoreversion
-Source: "E:\SoftwareProjects\GRAIPPythonTools\setup_tools\SourceFiles\SinmapSI\32_bit\SinmapSI.exe"; DestDir: "{app}\PythonTools"; Flags: ignoreversion; Check: not IsWin64
-Source: "E:\SoftwareProjects\GRAIPPythonTools\setup_tools\SourceFiles\SinmapSI\64_bit\SinmapSI.exe"; DestDir: "{app}\PythonTools"; Flags: ignoreversion; Check: IsWin64
-Source: "E:\SoftwareProjects\GRAIPPythonTools\setup_tools\SourceFiles\utils.py"; DestDir: "{app}\PythonTools"; Flags: ignoreversion
-Source: "E:\SoftwareProjects\GRAIPPythonTools\setup_tools\SourceFiles\comdlg32.ocx"; DestDir: {sys}; Flags: onlyifdoesntexist regserver 32bit
-Source: "E:\SoftwareProjects\GRAIPPythonTools\setup_tools\SourceFiles\mshflxgd.ocx"; DestDir: {sys}; Flags: onlyifdoesntexist regserver 32bit
-Source: "E:\SoftwareProjects\GRAIPPythonTools\setup_tools\SourceFiles\MSCOMCTL.OCX"; DestDir: {sys}; Flags: onlyifdoesntexist regserver 32bit
+Source: "SourceFiles\ArcGISCalibrationRegionTool.py"; DestDir: "{app}\PythonTools"; Flags: ignoreversion
+Source: "SourceFiles\ArcGISRoadSurfaceErosion.py"; DestDir: "{app}\PythonTools"; Flags: ignoreversion
+Source: "SourceFiles\ArcGisStreamSedimentInput.py"; DestDir: "{app}\PythonTools"; Flags: ignoreversion
+Source: "SourceFiles\ArcGISStabilityIndex.py"; DestDir: "{app}\PythonTools"; Flags: ignoreversion
+Source: "SourceFiles\ArcGISStabilityIndexWithRoadImpact.py"; DestDir: "{app}\PythonTools"; Flags: ignoreversion
+Source: "SourceFiles\ArcGISCalibrationRegionTool.py"; DestDir: "{app}\PythonTools"; Flags: ignoreversion
+
+Source: "SourceFiles\consolidateShp.dll"; DestDir: "{app}\Preprocessor"; Flags: restartreplace ignoreversion regserver 32bit
+Source: "SourceFiles\consolidateShp.dll"; DestDir: "{app}\Preprocessor"; Flags: restartreplace ignoreversion regserver 64bit; Check: IsWin64
+
+Source: "SourceFiles\demo.zip"; DestDir: "{app}\Documentation"; Flags: ignoreversion
+Source: "SourceFiles\GRAIP Tools.tbx"; DestDir: "{app}\PythonTools"; Flags: ignoreversion
+Source: "SourceFiles\GRAIP.mdb"; DestDir: "{app}\Preprocessor\graip db"; Flags: ignoreversion
+Source: "SourceFiles\GRAIPPreprocessor.exe"; DestDir: "{app}\Preprocessor"; Flags: ignoreversion
+
+Source: "SourceFiles\CalibrationRegionTool.py"; DestDir: "{app}\PythonTools"; Flags: ignoreversion
+Source: "SourceFiles\RoadSurfaceErosion.py"; DestDir: "{app}\PythonTools"; Flags: ignoreversion
+Source: "SourceFiles\StreamSedimentInput.py"; DestDir: "{app}\PythonTools"; Flags: ignoreversion
+Source: "SourceFiles\StabilityIndex.py"; DestDir: "{app}\PythonTools"; Flags: ignoreversion
+Source: "SourceFiles\CalibrationRegionTool.py"; DestDir: "{app}\PythonTools"; Flags: ignoreversion
+Source: "SourceFiles\utils.py"; DestDir: "{app}\PythonTools"; Flags: ignoreversion
+
+; we no more installing sinmap. GRIAP-2 version 1.1 will depend on TauDEM 5.3 which should have sianmap installed
+;Source: "E:\SoftwareProjects\GRAIPPythonTools\setup_tools\SourceFiles\SinmapSI\32_bit\SinmapSI.exe"; DestDir: "{app}\PythonTools"; Flags: ignoreversion; Check: not IsWin64
+;Source: "E:\SoftwareProjects\GRAIPPythonTools\setup_tools\SourceFiles\SinmapSI\64_bit\SinmapSI.exe"; DestDir: "{app}\PythonTools"; Flags: ignoreversion; Check: IsWin64 
+
+Source: "SourceFiles\comdlg32.ocx"; DestDir: {sys}; Flags: onlyifdoesntexist regserver 32bit
+Source: "SourceFiles\mshflxgd.ocx"; DestDir: {sys}; Flags: onlyifdoesntexist regserver 32bit
+Source: "SourceFiles\MSCOMCTL.OCX"; DestDir: {sys}; Flags: onlyifdoesntexist regserver 32bit
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Icons]
@@ -58,6 +77,33 @@ Root: HKLM; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environmen
 
 
 [code]
+// add a custome wizard page after the welcome page to show the list of programs that will be installed
+procedure InitializeWizard();
+var UserPage: TInputQueryWizardPage;
+var notes_string: string;
+
+begin
+  notes_string := 'NOTES:With the installation of GRAIP-2 Python tools, the following python scripts are installed:'#13 +
+      '1. GRAIP Tools.tbx: This is an ArcGIS Toolbox that interfaces to Python Scripts, ' +
+      '2. ArcGISRoadSurfaceErosion.py: ArcGIS Toolbox interface to Road Surface Erosion function, ' +
+      '3. ArcGISStreamSedimentInput.py: ArcGIS Toolbox interface to Stream Sediment Input function, ' +
+      '4. ArcGISStabilityIndex.py: ArcGIS Toolbox Stability Index interface to Stability Index function, ' +
+      '5. ArcGISStabilityIndexWithRoadImpact.py: ArcGIS Toolbox Stability Index with Road Impact interface to Stability Index function, ' +
+      '6. ArcGISCalibrationRegionTool.py: ArcGIS Toolbox Calibration Region Tool interface to Calibration Region Tool function, ' +
+      '7. RoadSurfaceErosion.py: Command line callable Road Surface Erosion function, ' +
+      '8. StreamSedimentInput.py: Command line callable Stream Sediment Input function, ' +
+      '9. RoadSurfaceErosion.py: Command line callable Road Surface Erosion function, ' +
+      '10. StabilityIndex.py: Command line callable Stability Index function, ' +
+      '11. CalibrationRegionTool.py: Command line callable Calibration Region Tool function'#13 +
+      'The installer will also add this path entry:C:\Program Files\GRAIP-2\PythonTools'; 
+
+  
+  UserPage := CreateInputQueryPage(wpWelcome,
+      'The following programs will be installed', '',
+      'GRAIPPreprocessor.exe (GRAIP 1.0.10), GRAIP-2 Python tools version 1.1'#13 +  notes_string);   
+  
+end;
+
 function GetPathData(Param: String): String;
 { The 'Param' parameter has the value of the existing value for the system 'Path' variable }
 var 
