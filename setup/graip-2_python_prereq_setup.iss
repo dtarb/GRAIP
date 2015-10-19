@@ -21,15 +21,24 @@ AppUpdatesURL={#MyAppURL}
 DefaultDirName={pf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
-OutputBaseFilename=graip_python_setup
+OutputBaseFilename=graip_2_prerequisites_setup
 Compression=lzma
 SolidCompression=yes
+; "ArchitecturesInstallIn64BitMode=x64" requests that the install be
+; done in "64-bit mode" on x64, meaning it should use the native
+; 64-bit Program Files directory and the 64-bit view of the registry.
+; On all other architectures it will install in "32-bit mode".
+ArchitecturesInstallIn64BitMode=x64
+;WizardSmallImageFile=graip.bmp
+; Don't show the welcome wizard page  and ready to install page
+DisableWelcomePage=yes
+DisableReadyPage=yes
 ; Tell Windows Explorer to reload the environment
 ChangesEnvironment=yes
 
 [Files]
 ; Install GDAL python library
-Source: "C:\GDAL\gdalwin32-1.6\*"; DestDir: "{app}\GDAL\\gdalwin32-1.6"; Flags: recursesubdirs onlyifdoesntexist uninsneveruninstall 
+Source: "C:\GDAL_for_GRAIP\gdalwin32-1.6\*"; DestDir: "{app}\GDAL\gdalwin32-1.6"; Flags: recursesubdirs onlyifdoesntexist uninsneveruninstall 
 
 ; Install Proj python library
 Source: "C:\GDAL_Proj\proj\*"; DestDir: "{app}\GDAL_Proj\proj"; Flags: recursesubdirs onlyifdoesntexist uninsneveruninstall 
@@ -38,7 +47,7 @@ Source: "C:\GDAL_Proj\proj\*"; DestDir: "{app}\GDAL_Proj\proj"; Flags: recursesu
 Source: "C:\Click\click-2.5\*"; DestDir: "{app}\Click\click-2.5"; Flags: recursesubdirs onlyifdoesntexist uninsneveruninstall 
 
 ; Install all files in the setup_files - these are executable files that inno setup will run. see [Run] section
-Source: "E:\SoftwareProjects\GRAIPPythonTools\setup\setup_files\*"; DestDir: "{app}\setup_files"; Flags: recursesubdirs onlyifdoesntexist uninsneveruninstall 
+Source: "setup_files\*"; DestDir: "{app}\setup_files"; Flags: recursesubdirs onlyifdoesntexist uninsneveruninstall 
 
 [Run]
 ; install GDAL python bindings
@@ -58,7 +67,7 @@ Filename: "{app}\setup_files\ez_setup.py"; Parameters: "install"; WorkingDir: "{
 ;Filename: "cmd.exe"; Parameters: "/{app}\setup_files\hello.py"; WorkingDir: "{app}"; Flags: waituntilterminated
 ; run the setup.py file from the Click installation to register it as a python package
 ;Filename: "cmd.exe"; Parameters: "python {app}\Click\click-2.5\setup.py /install"; WorkingDir: "{app}"; Flags: waituntilterminated runascurrentuser
-Filename: "{app}\Click\click-2.5\setup.py"; Parameters: "install"; Flags: shellexec waituntilterminated runascurrentuser
+Filename: "{app}\Click\click-2.5\setup.py"; Parameters: "install"; Flags: shellexec waituntilterminated runascurrentuser;  AfterInstall: CleanUp('{app}\setup_files')
 
 
 
@@ -79,6 +88,26 @@ Type: filesandordirs; Name: "{app}"
 
 
 [code]
+// add a custom wizard page after the welcome page to show the list of programs that will be installed
+procedure InitializeWizard();
+var UserPage: TInputQueryWizardPage;
+var notes_string: string;
+
+begin
+  notes_string := 'NOTES:With the installation of GRAIP-2 prequisites modules, the following path entries will also be added:'#13 +
+      '1. C:\Program Files\GDAL\gdalwin32-1.6\bin'#13 +
+      '2. C:\Program Files\GDAL_Proj\proj\bin'#13 +
+      'In addition, the following new path variables will also be added:'#13 +
+      '1. GDAL_DATA (set to a value of:C:\Program Files\GDAL\gdalwin32-1.6\data)'#13 +
+      '2. PROJ_LIB (set to a value of:C:\Program Files\GDAL_Proj\proj\nad)'; 
+
+  
+  UserPage := CreateInputQueryPage(wpWelcome,
+      'The following programs will be installed', '',
+      'Python 2.7 GDAL-1.9.2, Python 2.7 numpy-1.8.1, Python 2.7 pyodbc-3.0.7, Python 2.7 scipy-0.15.1, Click-2.5 (Python command line interface creation kit), setuptools-5.4.1, easyinstall-2.7'#13#13 +  notes_string);   
+  
+end;
+
 function GetPathData(Param: String): String;
 { The 'Param' parameter has the value of the existing value for the system 'Path' variable }
 var 
@@ -98,4 +127,11 @@ begin
     Result:= Param + ';' + dataToAdd; 
 end;
 
-
+procedure CleanUp(FolderToDelete: string);
+begin         
+    if DirExists(ExpandConstant(FolderToDelete)) then
+    begin
+        DelTree(ExpandConstant(FolderToDelete), True, True, True);
+        //MsgBox('Folder deleted', mbInformation, MB_OK);
+    end;  
+end;
