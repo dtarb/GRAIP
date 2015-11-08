@@ -43,6 +43,7 @@ Source: "SourceFiles\ArcGisStreamSedimentInput.py"; DestDir: "{app}\PythonTools"
 Source: "SourceFiles\ArcGISStabilityIndex.py"; DestDir: "{app}\PythonTools"; Flags: ignoreversion
 Source: "SourceFiles\ArcGISStabilityIndexWithRoadImpact.py"; DestDir: "{app}\PythonTools"; Flags: ignoreversion
 Source: "SourceFiles\ArcGISCalibrationRegionTool.py"; DestDir: "{app}\PythonTools"; Flags: ignoreversion
+Source: "SourceFiles\ArcGISMassWastingPotential.py"; DestDir: "{app}\PythonTools"; Flags: ignoreversion
 
 Source: "SourceFiles\consolidateShp.dll"; DestDir: "{app}\Preprocessor"; Flags: restartreplace ignoreversion regserver 32bit
 Source: "SourceFiles\consolidateShp.dll"; DestDir: "{app}\Preprocessor"; Flags: restartreplace ignoreversion regserver 64bit; Check: IsWin64
@@ -57,6 +58,7 @@ Source: "SourceFiles\RoadSurfaceErosion.py"; DestDir: "{app}\PythonTools"; Flags
 Source: "SourceFiles\StreamSedimentInput.py"; DestDir: "{app}\PythonTools"; Flags: ignoreversion
 Source: "SourceFiles\StabilityIndex.py"; DestDir: "{app}\PythonTools"; Flags: ignoreversion
 Source: "SourceFiles\CalibrationRegionTool.py"; DestDir: "{app}\PythonTools"; Flags: ignoreversion
+Source: "SourceFiles\MassWastingPotential.py"; DestDir: "{app}\PythonTools"; Flags: ignoreversion
 Source: "SourceFiles\utils.py"; DestDir: "{app}\PythonTools"; Flags: ignoreversion
 
 ; we no more installing sinmap. GRIAP-2 version 1.1 will depend on TauDEM 5.3 which should have sianmap installed
@@ -79,28 +81,36 @@ Root: HKLM; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environmen
 [code]
 // add a custome wizard page after the welcome page to show the list of programs that will be installed
 procedure InitializeWizard();
-var UserPage: TInputQueryWizardPage;
-var notes_string: string;
+var UserPage_1: TInputQueryWizardPage;
+var UserPage_2: TInputQueryWizardPage;
+var notes_string_1: string;
+var notes_string_2: string;
 
 begin
-  notes_string := 'NOTES:With the installation of GRAIP-2 Python tools, the following python scripts are installed:'#13 +
-      '1. GRAIP Tools.tbx: This is an ArcGIS Toolbox that interfaces to Python Scripts, ' +
-      '2. ArcGISRoadSurfaceErosion.py: ArcGIS Toolbox interface to Road Surface Erosion function, ' +
-      '3. ArcGISStreamSedimentInput.py: ArcGIS Toolbox interface to Stream Sediment Input function, ' +
-      '4. ArcGISStabilityIndex.py: ArcGIS Toolbox Stability Index interface to Stability Index function, ' +
-      '5. ArcGISStabilityIndexWithRoadImpact.py: ArcGIS Toolbox Stability Index with Road Impact interface to Stability Index function, ' +
-      '6. ArcGISCalibrationRegionTool.py: ArcGIS Toolbox Calibration Region Tool interface to Calibration Region Tool function, ' +
-      '7. RoadSurfaceErosion.py: Command line callable Road Surface Erosion function, ' +
-      '8. StreamSedimentInput.py: Command line callable Stream Sediment Input function, ' +
-      '9. RoadSurfaceErosion.py: Command line callable Road Surface Erosion function, ' +
-      '10. StabilityIndex.py: Command line callable Stability Index function, ' +
-      '11. CalibrationRegionTool.py: Command line callable Calibration Region Tool function'#13 +
+  notes_string_1 := 'NOTES:With the installation of GRAIP-2 Python tools, the following python scripts are installed:'#13 +
+      '1. GRAIP Tools.tbx: This is an ArcGIS Toolbox that interfaces to Python Scripts'#13 +
+      '2. ArcGISRoadSurfaceErosion.py: ArcGIS Toolbox interface to Road Surface Erosion function'#13 +
+      '3. ArcGISStreamSedimentInput.py: ArcGIS Toolbox interface to Stream Sediment Input function'#13 +
+      '4. ArcGISStabilityIndex.py: ArcGIS Toolbox Stability Index interface to Stability Index function'#13 +
+      '5. ArcGISStabilityIndexWithRoadImpact.py: ArcGIS Toolbox Stability Index with Road Impact interface to Stability Index function'#13 +
+      '6. ArcGISCalibrationRegionTool.py: ArcGIS Toolbox Calibration Region Tool interface to Calibration Region Tool function'#13 +
+      '7. ArcGISMassWasting.py: ArcGIS Toolbox Mass Wasting Potential Analysis interface to Mas Wasting Potential function';
+      
+  notes_string_2 := '8. RoadSurfaceErosion.py: Command line callable Road Surface Erosion function'#13 +
+      '9. StreamSedimentInput.py: Command line callable Stream Sediment Input function'#13 +
+      '10. RoadSurfaceErosion.py: Command line callable Road Surface Erosion function'#13 +
+      '11. StabilityIndex.py: Command line callable Stability Index function'#13 +
+      '12. CalibrationRegionTool.py: Command line callable Calibration Region Tool function'#13 +
+      '13. MassWastingPotential.py: Command line callable Mas Wasting Potential function'#13#13 +
       'The installer will also add this path entry:C:\Program Files\GRAIP-2\PythonTools'; 
 
-  
-  UserPage := CreateInputQueryPage(wpWelcome,
+  UserPage_1 := CreateInputQueryPage(wpWelcome,
       'The following programs will be installed', '',
-      'GRAIPPreprocessor.exe (GRAIP 1.0.10), GRAIP-2 Python tools version 1.1'#13 +  notes_string);   
+      'GRAIPPreprocessor.exe (GRAIP 1.0.10), GRAIP-2 Python tools version 1.1'#13 +  notes_string_1);  
+
+  UserPage_2 := CreateInputQueryPage(UserPage_1.ID,
+  'Continued: The following programs will be installed', '', 
+  'The following python scripts are installed:'#13 + notes_string_2); 
   
 end;
 
