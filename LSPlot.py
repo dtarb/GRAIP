@@ -17,10 +17,13 @@ LOW_ESI = 1.25
 ALPHA = 2
 DrainType = namedtuple('DrainType', 'GULLY LANDSLIDE ELSEWHERE')
 DRAIN_TYPE = DrainType('gully', 'landslide', 'elsewhere')
+conn = None
 
 @click.command()
 ### Use the followings for debugging within PyCharm
 #@click.option('--mdb', default=r"E:\Graip\GRAIPPythonTools\demo\demo_MWP\test.mdb", type=click.Path(exists=True))
+
+# use the following for production
 @click.option('--mdb', default="test.mdb", type=click.Path(exists=True))
 @click.option('--high-esi', default=25.0, type=click.FLOAT)
 @click.option('--medium-esi', default=8.0, type=click.FLOAT)
@@ -69,10 +72,11 @@ def create_ls_plot(graip_db):
     global GULLY
     global LANDSLIDE
     global ALPHA
+    global conn
     conn = pyodbc.connect(utils.MS_ACCESS_CONNECTION % graip_db)
     cursor = conn.cursor()
 
-    # get the IDs for Gully and Landslide from the DischartToDefinitions table
+    # get the IDs for Gully and Landslide from the DischargeToDefinitions table
     row = cursor.execute("SELECT DischargeToID FROM DischargeToDefinitions WHERE DischargeTo=?",
                          'Gully').fetchone()
     GULLY = row.DischargeToID
@@ -82,17 +86,22 @@ def create_ls_plot(graip_db):
     LANDSLIDE = row.DischargeToID
 
     dp_rows = cursor.execute("SELECT Slope, ELength, ESI, DischargeToID FROM DrainPoints ORDER BY Slope").fetchall()
+
+    # variable of type list to store data points for points plot
     dp_slope_values_gully = []
     dp_elength_values_gully = []
     dp_slope_values_landslide = []
     dp_elength_values_landslide = []
     dp_slope_values_others = []
     dp_elength_values_others = []
+
+    # variable of type list to store data points for line plots
     HIGH_ESI_elength_values = []
     MEDIUM_ESI_elength_values = []
     LOW_ESI_elength_values = []
     ESI_slope_values = []
 
+    # variable of type dict to store statistics data
     count_ESI_ge_HIGH_ESI = {DRAIN_TYPE.GULLY: 0, DRAIN_TYPE.LANDSLIDE: 0, DRAIN_TYPE.ELSEWHERE: 0}
     count_ESI_lt_HIGH_ESI_ge_MEDIUM_ESI = {DRAIN_TYPE.GULLY: 0, DRAIN_TYPE.LANDSLIDE: 0, DRAIN_TYPE.ELSEWHERE: 0}
     count_ESI_lt_MEDIUM_ESI_ge_LOW_ESI = {DRAIN_TYPE.GULLY: 0, DRAIN_TYPE.LANDSLIDE: 0, DRAIN_TYPE.ELSEWHERE: 0}
@@ -155,9 +164,6 @@ def create_ls_plot(graip_db):
                  xytext=(ESI_slope_values[-2], LOW_ESI_elength_values[-2]))
 
     # add legend to data points
-    # plt.legend((others_points, gully_points, landslide_points), ('Drain Points', 'Gullies', 'Landslide'),
-    #            loc=9, bbox_to_anchor=(0.5, -0.1), ncol=3)
-
     plt.legend((others_points, gully_points, landslide_points), ('Drain Points', 'Gullies', 'Landslide'),
                loc='upper center', ncol=3)
 
@@ -203,22 +209,21 @@ def create_ls_plot(graip_db):
     table.set_fontsize(20)
     table.scale(2, 2)
 
-    # title for the table
-    #plt.annotate('Statistics', xy=(0, -0.3), xytext=(0, -0.3))
+    # set title for the table
     plt.text(28.0, 0.09, "Statistics")
     plt.subplots_adjust(bottom=0.40)
 
     # make the plot window take full screen size
     figManager = plt.get_current_fig_manager()
     figManager.window.state('zoomed')
-    # figManager.window.showMaximized()
 
     # set title of the plot window
     fig = plt.gcf()
     fig.canvas.set_window_title("L-S Plot")
     plt.show()
 
-    print("Done")
+    # uncomment this during debugging and put a breakpoint here to see the plot
+    #print("Done....")
 
 
 def _compute_statistics(elength, slope, dp_type, data_dict_ge_HIGH_ESI, data_dict_lt_HIGH_ESI_ge_MEDIUM_ESI,
@@ -261,6 +266,8 @@ if __name__ == '__main__':
     try:
         main()
     except Exception as e:
+        if conn:
+            conn.close()
         print "Failed to generate L-S Plot."
         print(e.message)
         sys.exit(1)
