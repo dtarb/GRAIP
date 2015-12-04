@@ -1,36 +1,24 @@
-#from array import array
-from numpy.numarray import array
-
 __author__ = 'Pabitra'
+
+import os
+import sys
+
+from numpy.numarray import array
 from osgeo import ogr, gdal, osr
 import numpy as np
 import pyodbc
-import sys
 import click
-import os
+
 from scipy import interpolate
 from gdalconst import *
+
 import utils
 
 # TODO: Need to find out how to catch gdal exceptions
 
 gdal.UseExceptions()
 
-MS_ACCESS_CONNECTION = "Driver={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=%s;"
-
-class GDALFileDriver(object):
-
-    @classmethod
-    def ShapeFile(cls):
-        return "ESRI Shapefile"
-
-    @classmethod
-    def TifFile(cls):
-        return "GTiff"
-
-
 @click.command()
-
 ### Use the followings for debugging within PyCharm
 # @click.option('--dp', default=r"E:\Graip\GRAIPPythonTools\demo\demo_RSE\drainpoints.shp", type=click.Path(exists=True))
 # @click.option('--rd', default=r"E:\Graip\GRAIPPythonTools\demo\demo_RSE\roadlines.shp", type=click.Path(exists=True))
@@ -85,85 +73,13 @@ def main(dp, rd, mdb, z, dpsi, sc):
     else:
         is_stream_connected = False
 
-    print "Please wait a few seconds. Computation is in progress ..."
-   # compute_length_elevation(rd_shapefile, input_dem)
+    print ("Please wait a few seconds. Computation is in progress ...")
     compute_length_elevation_interpolation(rd_shapefile, input_dem)
     compute_road_sediment_production(rd_shapefile, graip_db)
     compute_drainpoint_sediment_production(graip_db)
     create_drainpoint_weighted_grid(input_dem, graip_db, dpsi_gridfile, dp_shapefile, is_stream_connected)
-    print "Road surface erosion computation finished successfully."
+    print ("Road surface erosion computation finished successfully.")
 
-# NOT USED - REPLACED BY "compute_length_elevation_interpolation" function
-def compute_length_elevation(rd_shapefile, input_dem):
-    """
-    Calculates road segment length and elevation and writes to roadlines shapefile
-
-    :param rd_shapefile: Path to roadlines shapefile
-    :param input_dem: Path to dem file
-    :return: None
-    """
-
-    driver = ogr.GetDriverByName(GDALFileDriver.ShapeFile())
-    dataSource = driver.Open(rd_shapefile, 1)
-    layer = dataSource.GetLayer()
-    layerDefn = layer.GetLayerDefn()
-
-    dem = gdal.Open(input_dem)
-
-    try:
-        #delete field "Length" if it exists
-        fld_index = layerDefn.GetFieldIndex('Length')
-        if fld_index > 0:
-            layer.DeleteField(fld_index)
-
-        #delete "Range" if it exists
-        fld_index = layerDefn.GetFieldIndex('Range')
-        if fld_index > 0:
-            layer.DeleteField(fld_index)
-    except:
-        pass
-
-    # add a new field (column) 'Length' to the attribute table
-    layer.CreateField(ogr.FieldDefn('Length', ogr.OFTReal))
-    fld_index_length = layerDefn.GetFieldIndex('Length')
-
-    # add a new field (column) 'Range' to the attribute table
-    layer.CreateField(ogr.FieldDefn('Range', ogr.OFTReal))
-    fld_index_range = layerDefn.GetFieldIndex('Range')
-
-    for feature in layer:
-        try:
-            geom = feature.GetGeometryRef()
-            if geom:
-                total_points = geom.GetPointCount()
-                # write length value to shapefile
-                #feature.SetField(fld_index_length, geom.Length())
-                rd_length = geom.Length()
-                if total_points > 0:
-                    # calculate range from the elevation of 2 end points of the road segment
-                    elevation_1 = _get_coordinate_to_elevation(geom.GetX(0), geom.GetY(0), dem)
-                    elevation_2 = _get_coordinate_to_elevation(geom.GetX(total_points-1), geom.GetY(total_points-1), dem)
-                    rd_range = abs(elevation_2 - elevation_1)
-                else:
-                    rd_range = 0    # sometimes shape/feature have no points - in that case we say range is zero
-            else:
-                rd_length = 0
-                rd_range = 0
-
-            # write length value to shapefile
-            feature.SetField(fld_index_length, rd_length)
-            # write range value to shapefile
-            feature.SetField(fld_index_range, rd_range)
-
-            # rewrite the feature to the layer - this will in fact save the data
-            layer.SetFeature(feature)
-            geom = None
-        except:
-            dataSource.Destroy()
-            raise
-
-    # close datasource
-    dataSource.Destroy()
 
 def compute_length_elevation_interpolation(rd_shapefile, input_dem):
     """
@@ -174,7 +90,7 @@ def compute_length_elevation_interpolation(rd_shapefile, input_dem):
     :return: None
     """
 
-    driver = ogr.GetDriverByName(GDALFileDriver.ShapeFile())
+    driver = ogr.GetDriverByName(utils.GDALFileDriver.ShapeFile())
     dataSource = driver.Open(rd_shapefile, 1)
     layer = dataSource.GetLayer()
     layerDefn = layer.GetLayerDefn()
@@ -197,12 +113,12 @@ def compute_length_elevation_interpolation(rd_shapefile, input_dem):
     bilinterp = interpolate.interp2d(ax, ay, dem_band_array, kind='linear')
 
     try:
-        #delete field "Length" if it exists
+        # delete field "Length" if it exists
         fld_index = layerDefn.GetFieldIndex('Length')
         if fld_index > 0:
             layer.DeleteField(fld_index)
 
-        #delete "Range" if it exists
+        # delete "Range" if it exists
         fld_index = layerDefn.GetFieldIndex('Range')
         if fld_index > 0:
             layer.DeleteField(fld_index)
@@ -252,8 +168,9 @@ def compute_length_elevation_interpolation(rd_shapefile, input_dem):
     # close datasource
     dataSource.Destroy()
 
+
 def _validate_args(dp, rd, z, mdb, dpsi):
-    driver = ogr.GetDriverByName(GDALFileDriver.ShapeFile())
+    driver = ogr.GetDriverByName(utils.GDALFileDriver.ShapeFile())
     try:
         dataSource = driver.Open(dp, GA_ReadOnly)
         if not dataSource:
@@ -281,7 +198,7 @@ def _validate_args(dp, rd, z, mdb, dpsi):
         if not os.path.dirname(mdb):
             mdb = os.path.join(os.getcwd(), mdb)
 
-        conn = pyodbc.connect(MS_ACCESS_CONNECTION % mdb)
+        conn = pyodbc.connect(utils.MS_ACCESS_CONNECTION % mdb)
         conn.close()
     except pyodbc.Error as ex:
         raise utils.ValidationException(ex.message)
@@ -318,6 +235,7 @@ def _get_coordinate_to_elevation(x, y, dem):
     array = band.ReadAsArray(xoff=col, yoff=row, win_xsize=1, win_ysize=1)
     return array.item(0)
 
+
 def _get_coordinate_to_grid_row_col(x, y, dem):
     """
     Finds the row and col of a point on the grid
@@ -338,6 +256,7 @@ def _get_coordinate_to_grid_row_col(x, y, dem):
 
     return row, col
 
+
 def compute_road_sediment_production(rd_shapefile, graip_db):
     """
     Populates the RoadLine table with sediment related data
@@ -346,7 +265,7 @@ def compute_road_sediment_production(rd_shapefile, graip_db):
     :param graip_db: path to the graip database file
     :return: None
     """
-    driver = ogr.GetDriverByName(GDALFileDriver.ShapeFile())
+    driver = ogr.GetDriverByName(utils.GDALFileDriver.ShapeFile())
     dataSource = driver.Open(rd_shapefile, 1)
     layer = dataSource.GetLayer()
     layerDefn = layer.GetLayerDefn()
@@ -358,7 +277,7 @@ def compute_road_sediment_production(rd_shapefile, graip_db):
     features = [ft for ft in layer]
 
     try:
-        conn = pyodbc.connect(MS_ACCESS_CONNECTION % graip_db)
+        conn = pyodbc.connect(utils.MS_ACCESS_CONNECTION % graip_db)
         cursor = conn.cursor()
         roadlines_rows = cursor.execute("SELECT * FROM RoadLines").fetchall()
 
@@ -453,6 +372,7 @@ def compute_road_sediment_production(rd_shapefile, graip_db):
         if dataSource:
             dataSource.Destroy()
 
+
 def compute_drainpoint_sediment_production(graip_db):
     """
     Populates the DrainPoints table with sediment production related data.
@@ -462,7 +382,7 @@ def compute_drainpoint_sediment_production(graip_db):
     :return: None
     """
     try:
-        conn = pyodbc.connect(MS_ACCESS_CONNECTION % graip_db)
+        conn = pyodbc.connect(utils.MS_ACCESS_CONNECTION % graip_db)
         cursor = conn.cursor()
         dp_rows = cursor.execute("SELECT * FROM DrainPoints ORDER BY GRAIPDID").fetchall()
         for dp_row in dp_rows:
@@ -528,10 +448,9 @@ def create_drainpoint_weighted_grid(input_dem, graip_db, dpsi_gridfile, dp_shape
     """
 
     try:
-        conn = pyodbc.connect(MS_ACCESS_CONNECTION % graip_db)
+        conn = pyodbc.connect(utils.MS_ACCESS_CONNECTION % graip_db)
         cursor = conn.cursor()
         # TODO: May be use the no data value from the input dem (ref: http://www.gdal.org/classGDALRasterBand.html#adcca51d230b5ac848c43f1896293fb50)
-        NO_DATA_VALUE = -9999
 
         # create a new weighted tif file based on the dem file
         dem = gdal.Open(input_dem)
@@ -543,7 +462,7 @@ def create_drainpoint_weighted_grid(input_dem, graip_db, dpsi_gridfile, dp_shape
         rows = dem.RasterYSize
         cols = dem.RasterXSize
 
-        driver = gdal.GetDriverByName(GDALFileDriver.TifFile())
+        driver = gdal.GetDriverByName(utils.GDALFileDriver.TifFile())
         number_of_bands = 1
         outRaster = driver.Create(dpsi_gridfile, cols, rows, number_of_bands, gdal.GDT_Float32)
         outRaster.SetGeoTransform((originX, pixelWidth, 0, originY, 0, pixelHeight))
@@ -553,7 +472,7 @@ def create_drainpoint_weighted_grid(input_dem, graip_db, dpsi_gridfile, dp_shape
         grid_initial_data = np.zeros((rows, cols), dtype=np.float32)
         grid_initial_data[:] = 0.0
         outband = outRaster.GetRasterBand(1)
-        outband.SetNoDataValue(NO_DATA_VALUE)
+        outband.SetNoDataValue(utils.NO_DATA_VALUE)
         outband.WriteArray(grid_initial_data)
 
         # set the projection of the tif file same as that of the dem
@@ -562,7 +481,7 @@ def create_drainpoint_weighted_grid(input_dem, graip_db, dpsi_gridfile, dp_shape
         outRaster.SetProjection(outRasterSRS.ExportToWkt())
 
         # open the drainpoints shapefile
-        driver = ogr.GetDriverByName(GDALFileDriver.ShapeFile())
+        driver = ogr.GetDriverByName(utils.GDALFileDriver.ShapeFile())
         dataSource = driver.Open(dp_shapefile, 1)
         layer = dataSource.GetLayer()
 
@@ -582,7 +501,7 @@ def create_drainpoint_weighted_grid(input_dem, graip_db, dpsi_gridfile, dp_shape
 
                 # get current grid cell data
                 current_cell_data = outband.ReadAsArray(xoff=col, yoff=row, win_xsize=1, win_ysize=1)
-                if current_cell_data[0][0] != NO_DATA_VALUE:
+                if current_cell_data[0][0] != utils.NO_DATA_VALUE:
                     sed_array[0][0] = current_cell_data[0][0] + dp_row.SedProd
                 else:
                     sed_array[0][0] = dp_row.SedProd
@@ -621,6 +540,6 @@ if __name__ == '__main__':
     try:
         main()
     except Exception as e:
-        print "Road surface erosion computation failed."
+        print ("Road surface erosion computation failed.")
         print(e.message)
         sys.exit(1)
