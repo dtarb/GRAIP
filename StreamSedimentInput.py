@@ -375,7 +375,7 @@ def _compute_direct_stream_sediment(net):
         fld_index_link_no = layerDefn.GetFieldIndex('LINKNO')
         fld_index_us_link_no1 = layerDefn.GetFieldIndex('USLINKNO1')
         fld_index_us_link_no2 = layerDefn.GetFieldIndex('USLINKNO2')
-        fld_index_cont_area = layerDefn.GetFieldIndex('DSContAr')
+        fld_index_cont_area = layerDefn.GetFieldIndex('DSContArea')
 
         if any(index == -1 for index in [fld_index_sed_accum,
                fld_index_spec_sed,
