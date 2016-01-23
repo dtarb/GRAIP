@@ -64,6 +64,7 @@ def main(net, sca, ad8, sac, spe):
 
     print ("Stream sediment computation finished successfully.")
 
+
 def _validate_args(net, sca, ad8, sac, spe):
     driver_shp = ogr.GetDriverByName(utils.GDALFileDriver.ShapeFile())
     try:
@@ -150,6 +151,7 @@ def _initialize_output_raster_file(base_raster_file, output_raster_file):
 
     outRaster = None
 
+
 def _compute_specific_sediment(sac, cont_area, spe, area_type):
     # ref to the specificsed() c++ method for the computational logic
 
@@ -172,7 +174,8 @@ def _compute_specific_sediment(sac, cont_area, spe, area_type):
     cont_area_pixel_width = abs(geotransform[1])
     cont_area_pixel_height = abs(geotransform[5])
 
-    #Put area in km^2 by dividing by 10^6 and then multiply by 1000 for kg to Mg conversion with this in the denominator
+    # put area in km^2 by dividing by 10^6 and then multiply by 1000 for kg to Mg conversion with this in
+    # the denominator
     if area_type == 'ad8':
         # in case of d8 each cell area is 1
         PIXEL_TO_AREA_AND_MG_CONVERSION_FACTOR = (cont_area_pixel_height * cont_area_pixel_width) / 1000
@@ -201,8 +204,9 @@ def _compute_specific_sediment(sac, cont_area, spe, area_type):
                 else:
                     sed_array_spe[row][col] = out_band_spe.GetNoDataValue()
 
-        #_show_progress()
-    # here we are writing all the data for the grid file. Have tried writing data cell by cell which makes it run very slow
+    #_show_progress()
+    # here we are writing all the data for the grid file. Have tried writing data cell by cell which makes it run
+    # very slow
     out_band_spe.WriteArray(sed_array_spe)
     out_band_spe.FlushCache()
 
@@ -233,12 +237,12 @@ def _compute_upstream_sediment(sac, ad8, sca, net):
     layerDefn = layer.GetLayerDefn()
 
     try:
-        #delete field "SedAccum" if it exists
+        # delete field "SedAccum" if it exists
         fld_index = layerDefn.GetFieldIndex('SedAccum')
         if fld_index > 0:
             layer.DeleteField(fld_index)
 
-        #delete "SpecSed" if it exists
+        # delete "SpecSed" if it exists
         fld_index = layerDefn.GetFieldIndex('SpecSed')
         if fld_index > 0:
             layer.DeleteField(fld_index)
@@ -271,7 +275,7 @@ def _compute_upstream_sediment(sac, ad8, sca, net):
         sca_pixel_width = abs(geotransform[1])
         sca_pixel_height = abs(geotransform[5])
 
-    #Put area in km^2 by dividing by 10^6 and then multiply by 1000 for kg to Mg conversion with this in the denominator
+    # put area in km^2 by dividing by 10^6 and then multiply by 1000 for kg to Mg conversion with this in the denominator
     if ad8:
         # in case of d8 each cell area is 1
         PIXEL_TO_AREA_AND_MG_CONVERSION_FACTOR = (ad8_pixel_height * ad8_pixel_width) / 1000
@@ -337,7 +341,7 @@ def _compute_upstream_sediment(sac, ad8, sca, net):
 
 
 def _compute_direct_stream_sediment(net):
-    #ref to seddirstream c++ function for the logic of this function
+    # ref to seddirstream c++ function for the logic of this function
 
     """
     Computes 'SedDir" and 'SpecSedDir' and appends these 2 fields to the stream network shapefile
@@ -355,17 +359,17 @@ def _compute_direct_stream_sediment(net):
     KG_PER_SQUARE_METER_TO_MG_PER_SQUARE_KM_FACTOR = 1000
 
     try:
-        #delete field "SedDir" if it exists
+        # delete field "SedDir" if it exists
         fld_index = layerDefn.GetFieldIndex('SedDir')
         if fld_index > 0:
             layer.DeleteField(fld_index)
 
-        #delete "SpecSedDir" if it exists
+        # delete "SpecSedDir" if it exists
         fld_index = layerDefn.GetFieldIndex('SpecSedDir')
         if fld_index > 0:
             layer.DeleteField(fld_index)
 
-        #check the following fields exist
+        # check the following fields exist
         fld_index_sed_accum = layerDefn.GetFieldIndex('SedAccum')
         fld_index_spec_sed = layerDefn.GetFieldIndex('SpecSed')
         fld_index_link_no = layerDefn.GetFieldIndex('LINKNO')
@@ -503,6 +507,7 @@ def _get_coordinate_to_grid_row_col(x, y, dem):
     row = int((y - originY)/pixelHeight)
 
     return row, col
+
 
 def _show_progress():
     global progress_dots
