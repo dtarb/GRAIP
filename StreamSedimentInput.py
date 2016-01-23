@@ -18,7 +18,6 @@ gdal.UseExceptions()
 
 progress_dots = '.'
 
-
 @click.command()
 ### Use the followings for debugging within the PyCharm
 #@click.option('--net', default=r"E:\Graip\GRAIPPythonTools\demo\demo_SSI\demnet.shp", type=click.Path(exists=True))
@@ -179,13 +178,15 @@ def _compute_specific_sediment(sac, cont_area, spe, area_type):
         PIXEL_TO_AREA_AND_MG_CONVERSION_FACTOR = (cont_area_pixel_height * cont_area_pixel_width) / 1000
     else:
         # in case of sca (dinfinity) each cell area is same as the cell size. If cell size is 10 m then cell area is 10
-        PIXEL_TO_AREA_AND_MG_CONVERSION_FACTOR = (cont_area_pixel_height * cont_area_pixel_width) / (1000 * cont_area_pixel_height)
+        PIXEL_TO_AREA_AND_MG_CONVERSION_FACTOR = (cont_area_pixel_height *
+                                                  cont_area_pixel_width) / (1000 * cont_area_pixel_height)
 
     start = time.time()
     sed_array_spe = np.zeros((band_sac.YSize, band_sac.XSize), dtype=np.float32)
     for row in range(0, band_sac.YSize):
         # get the data for the current row for ad8 and sac
-        cont_area_current_row_data = band_cont_area.ReadAsArray(xoff=0, yoff=row, win_xsize=band_cont_area.XSize, win_ysize=1)
+        cont_area_current_row_data = band_cont_area.ReadAsArray(xoff=0, yoff=row, win_xsize=band_cont_area.XSize,
+                                                                win_ysize=1)
         sac_current_row_data = band_sac.ReadAsArray(xoff=0, yoff=row, win_xsize=band_sac.XSize, win_ysize=1)
 
         for col in range(0, band_sac.XSize):
@@ -292,23 +293,27 @@ def _compute_upstream_sediment(sac, ad8, sca, net):
         try:
             geom = feature.GetGeometryRef()
             total_points = geom.GetPointCount()
-
+            if total_points == 0:
+                raise Exception("Invalid stream segment found in stream network shapefile.")
             # Assumption: The stream network created from TauDEM has points ordered from downstream to upstream end
             # in each feature. The following logic works based on this assumption
 
             if total_points > 1:
-                # find grid (raster_sac) row and col corresponding to stream segment first point that is not a segment join point
-                # the first point where the segment is joined to another segment is at geom.GetX(0) and geom.GetY(0)
+                # find grid (raster_sac) row and col corresponding to stream segment first point that is not a
+                # segment join point. the first point where the segment is joined to another segment is at
+                # geom.GetX(0) and geom.GetY(0)
                 row, col = _get_coordinate_to_grid_row_col(geom.GetX(1), geom.GetY(1), raster_sac)
             else:
                 row, col = _get_coordinate_to_grid_row_col(geom.GetX(0), geom.GetY(0), raster_sac)
 
             # read the cell data for the current row/col from ad8
             if ad8:
-                contributing_area_grid_current_cell_data = band_ad8.ReadAsArray(xoff=col, yoff=row, win_xsize=1, win_ysize=1)
+                contributing_area_grid_current_cell_data = band_ad8.ReadAsArray(xoff=col, yoff=row, win_xsize=1,
+                                                                                win_ysize=1)
             else:
                 # read the cell data for the current row/col from sca
-                contributing_area_grid_current_cell_data = band_sca.ReadAsArray(xoff=col, yoff=row, win_xsize=1, win_ysize=1)
+                contributing_area_grid_current_cell_data = band_sca.ReadAsArray(xoff=col, yoff=row, win_xsize=1,
+                                                                                win_ysize=1)
 
             sac_current_cell_data = band_sac.ReadAsArray(xoff=col, yoff=row, win_xsize=1, win_ysize=1)
             if sac_current_cell_data[0][0] != band_sac.GetNoDataValue():
@@ -366,7 +371,7 @@ def _compute_direct_stream_sediment(net):
         fld_index_link_no = layerDefn.GetFieldIndex('LINKNO')
         fld_index_us_link_no1 = layerDefn.GetFieldIndex('USLINKNO1')
         fld_index_us_link_no2 = layerDefn.GetFieldIndex('USLINKNO2')
-        fld_index_cont_area = layerDefn.GetFieldIndex('DS_Cont_Ar')
+        fld_index_cont_area = layerDefn.GetFieldIndex('DSContAr')
 
         if any(index == -1 for index in [fld_index_sed_accum,
                fld_index_spec_sed,
