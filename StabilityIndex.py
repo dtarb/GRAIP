@@ -68,8 +68,6 @@ def _get_initialized_parameters_dict():
     params[ParameterNames.dinf_slope_file] = None
     params[ParameterNames.demang_file] = None
     params[ParameterNames.dinf_sca_file] = None
-    #params[ParameterNames.dinf_sca_min_file] = None
-    #params[ParameterNames.dinf_sca_max_file] = None
     params[ParameterNames.cal_csv_file] = None
     params[ParameterNames.cal_grid_file] = None
     params[ParameterNames.csi_grid_file] = None
@@ -93,8 +91,6 @@ class ParameterNames(object):
     dinf_slope_file = 'slp'
     demang_file = 'ang'
     dinf_sca_file = 'sca'
-    #dinf_sca_min_file = 'scamin'
-    #dinf_sca_max_file = 'scamax'
     cal_csv_file = 'calpar'
     cal_grid_file = 'cal'
     csi_grid_file = 'si'
@@ -110,6 +106,7 @@ class ParameterNames(object):
     rhow = 'rhow'
     temporary_output_files_directory = 'temporary_output_files_directory'
     is_delete_intermediate_output_files = 'is_delete_intermediate_output_files'
+
 
 def _validate_args(params, params_dict):
     driver = ogr.GetDriverByName(utils.GDALFileDriver.ShapeFile())
@@ -167,8 +164,8 @@ def _validate_args(params, params_dict):
             if not os.path.dirname(input_file):
                 input_file = os.path.join(os.getcwd(), params_dict[key])
 
-            if not os.path.isfile(input_file):
-                raise utils.ValidationException("Invalid input control file (%s). %s file can't be found." %
+            if not os.path.exists(input_file):
+                raise utils.ValidationException("Invalid input control file (%s). %s file/directory can't be found." %
                                                 (params, params_dict[key]))
 
         # Test that the drainpoints file is a shapefile if it has been provided
@@ -365,8 +362,6 @@ def _taudem_area_dinf(weight_grid_file, demang_grid_file, output_sca_file):
     # Capture the contents of shell command and print it to the arcgis dialog box
     process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
     taudem_messages = []
-    # Submit command to operating system
-    os.system(cmd)
     for line in process.stdout.readlines():
         taudem_messages.append(line)
     return taudem_messages
@@ -398,8 +393,6 @@ def _generate_combined_stability_index_grid(params_dict):
     # Capture the contents of shell command and print it to the arcgis dialog box
     process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
     taudem_messages = []
-    # Submit command to operating system
-    os.system(cmd)
     for line in process.stdout.readlines():
         taudem_messages.append(line)
     return taudem_messages
@@ -443,7 +436,7 @@ def _sindex_drain_points(parm_dict):
             geom = feature.GetGeometryRef()
             total_points = geom.GetPointCount()
             if total_points > 0:
-                # calculate range from the elevation of 2 end points of the road segment
+                # lookup grid cell at drain point
                 row, col = utils.get_coordinate_to_grid_row_col(geom.GetX(0), geom.GetY(0), si_grid)
                 si_cell_data = si_band.ReadAsArray(xoff=col, yoff=row, win_xsize=1, win_ysize=1)
                 graipdid = feature.GetFieldAsInteger(fld_index_graipdid)
