@@ -37,8 +37,8 @@ DisableReadyPage=yes
 ChangesEnvironment=yes
 
 [Files]
-; Install GDAL python library
-Source: "C:\GDAL_for_GRAIP\gdalwin32-1.6\*"; DestDir: "{app}\GDAL\gdalwin32-1.6"; Flags: recursesubdirs onlyifdoesntexist uninsneveruninstall 
+; Install GDAL python library. Pabitra (2/26/2016): No need to install as part of GRIAP as this library is being installed by TauDEM installe
+;Source: "C:\GDAL_for_GRAIP\gdalwin32-1.6\*"; DestDir: "{app}\GDAL\gdalwin32-1.6"; Flags: recursesubdirs onlyifdoesntexist uninsneveruninstall 
 
 ; Install Proj python library
 Source: "C:\GDAL_Proj\proj\*"; DestDir: "{app}\GDAL_Proj\proj"; Flags: recursesubdirs onlyifdoesntexist uninsneveruninstall 
@@ -50,14 +50,17 @@ Source: "C:\Click\click-2.5\*"; DestDir: "{app}\Click\click-2.5"; Flags: recurse
 Source: "setup_files\*"; DestDir: "{app}\setup_files"; Flags: recursesubdirs onlyifdoesntexist uninsneveruninstall 
 
 [Run]
-; install GDAL python bindings
-Filename: "{app}\setup_files\GDAL-1.9.2.win32-py2.7.exe"; Flags: waituntilterminated
-; install numpy
-Filename: "{app}\setup_files\numpy-1.8.1-win32-superpack-python2.7.exe"; Flags: waituntilterminated
+; install GDAL python bindings Pabitra (2/26/2016): No need to install as part of GRIAP as this library is being installed by TauDEM installer
+;Filename: "{app}\setup_files\GDAL-1.9.2.win32-py2.7.exe"; Flags: waituntilterminated
+
+; install numpy    Pabitra (2/26/2016) numpy is now part of ArcGIS 10.3.1 hence no need to install
+;Filename: "{app}\setup_files\numpy-1.8.1-win32-superpack-python2.7.exe"; Flags: waituntilterminated
 ; install pyodbc
 Filename: "{app}\setup_files\pyodbc-3.0.7.win32-py2.7.exe"; Flags: waituntilterminated
 ; install scipy
 Filename: "{app}\setup_files\scipy-0.15.1-win32-superpack-python2.7.exe"; Flags: waituntilterminated
+; install matplotlib  Pabitra (2/26/2016) matplotlib is now part of ArcGIS 10.3.1 hence no need to install
+;Filename: "{app}\setup_files\matplotlib-1.1.0.win32-py2.7.exe"; Flags: waituntilterminated
 
 ; >>>TODO: The set_proj_lib.py file have code to copy the proj.dll file from the Proj installtion bin directory to the GDAL bin directory
 ; also delete every thing from the Proj lib's nad directory
@@ -75,8 +78,8 @@ Filename: "{app}\Click\click-2.5\setup.py"; Parameters: "install"; Flags: shelle
 ; set PATH
 ;Root: HKLM; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType:string; ValueName:"PATH"; ValueData:"{olddata};{app}\GDAL\gdalwin32-1.6\bin; {app}\GDAL_Proj\proj\bin"; Flags: preservestringtype
 Root: HKLM; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType:string; ValueName:"PATH"; ValueData:"{code:GetPathData|{olddata}}"; Flags: preservestringtype
-; set GDAL_DATA
-Root: HKLM; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType:string; ValueName:"GDAL_DATA"; ValueData:"{app}\GDAL\gdalwin32-1.6\data"; Flags: preservestringtype
+; set GDAL_DATA    PK commented out on 2/26/2016
+;Root: HKLM; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType:string; ValueName:"GDAL_DATA"; ValueData:"{app}\GDAL\gdalwin32-1.6\data"; Flags: preservestringtype
 ; set PROJ_LIB
 Root: HKLM; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType:string; ValueName:"PROJ_LIB"; ValueData:"{app}\GDAL_Proj\proj\nad"; Flags: preservestringtype
 
@@ -95,16 +98,14 @@ var notes_string: string;
 
 begin
   notes_string := 'NOTES:With the installation of GRAIP-2 prequisites modules, the following path entries will also be added:'#13 +
-      '1. C:\Program Files\GDAL\gdalwin32-1.6\bin'#13 +
-      '2. C:\Program Files\GDAL_Proj\proj\bin'#13 +
-      'In addition, the following new path variables will also be added:'#13 +
-      '1. GDAL_DATA (set to a value of:C:\Program Files\GDAL\gdalwin32-1.6\data)'#13 +
-      '2. PROJ_LIB (set to a value of:C:\Program Files\GDAL_Proj\proj\nad)'; 
+      'C:\Program Files\GDAL_Proj\proj\bin'#13 +
+      'In addition, the following new path variable will also be added:'#13 +
+      'PROJ_LIB (set to a value of:C:\Program Files\GDAL_Proj\proj\nad)'; 
 
   
   UserPage := CreateInputQueryPage(wpWelcome,
       'The following programs will be installed', '',
-      'Python 2.7 GDAL-1.9.2, Python 2.7 numpy-1.8.1, Python 2.7 pyodbc-3.0.7, Python 2.7 scipy-0.15.1, Click-2.5 (Python command line interface creation kit), setuptools-5.4.1, easyinstall-2.7'#13#13 +  notes_string);   
+      'Python 2.7 pyodbc-3.0.7, Python 2.7 scipy-0.15.1, Click-2.5 (Python command line interface creation kit), setuptools-5.4.1, easyinstall-2.7'#13#13 +  notes_string);   
   
 end;
 
@@ -115,7 +116,8 @@ var
   dataToAdd: string;
 begin 
   { This is the data we want to add to the system 'Path' variable} 
-  dataToAdd:= ExpandConstant('{app}') + '\GDAL\gdalwin32-1.6\bin;' +  ExpandConstant('{app}') + '\GDAL_Proj\proj\bin';
+  //dataToAdd:= ExpandConstant('{app}') + '\GDAL\gdalwin32-1.6\bin;' +  ExpandConstant('{app}') + '\GDAL_Proj\proj\bin'; 
+  dataToAdd:= ExpandConstant('{app}') + '\GDAL_Proj\proj\bin';
 
   { check if the data we want to add is already in the 'Path' variable }
   index:=pos(dataToAdd, Param)
