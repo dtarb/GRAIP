@@ -44,7 +44,7 @@ ChangesEnvironment=yes
 Source: "C:\GDAL_Proj\proj\*"; DestDir: "{app}\GDAL_Proj\proj"; Flags: recursesubdirs onlyifdoesntexist uninsneveruninstall 
 
 ; Install Click python comandline interface library
-Source: "C:\Click\click-2.5\*"; DestDir: "{app}\Click\click-2.5"; Flags: recursesubdirs onlyifdoesntexist uninsneveruninstall 
+Source: "C:\Click\click-6.4\*"; DestDir: "{app}\Click\click-6.4"; Flags: recursesubdirs onlyifdoesntexist uninsneveruninstall 
 
 ; Install all files in the setup_files - these are executable files that inno setup will run. see [Run] section
 Source: "setup_files\*"; DestDir: "{app}\setup_files"; Flags: recursesubdirs onlyifdoesntexist uninsneveruninstall 
@@ -70,7 +70,7 @@ Filename: "{app}\setup_files\ez_setup.py"; Parameters: "install"; WorkingDir: "{
 ;Filename: "cmd.exe"; Parameters: "/{app}\setup_files\hello.py"; WorkingDir: "{app}"; Flags: waituntilterminated
 ; run the setup.py file from the Click installation to register it as a python package
 ;Filename: "cmd.exe"; Parameters: "python {app}\Click\click-2.5\setup.py /install"; WorkingDir: "{app}"; Flags: waituntilterminated runascurrentuser
-Filename: "{app}\Click\click-2.5\setup.py"; Parameters: "install"; Flags: shellexec waituntilterminated runascurrentuser;  AfterInstall: CleanUp('{app}\setup_files')
+Filename: "{app}\Click\click-6.4\setup.py"; Parameters: "install"; Flags: shellexec waituntilterminated runascurrentuser;  AfterInstall: CleanUp('{app}\setup_files')
 
 
 
