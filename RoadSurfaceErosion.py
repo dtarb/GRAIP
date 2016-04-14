@@ -2,6 +2,7 @@ __author__ = 'Pabitra'
 
 import os
 import sys
+from datetime import datetime
 
 from numpy.numarray import array
 from osgeo import ogr, gdal, osr
@@ -18,8 +19,13 @@ import utils
 
 gdal.UseExceptions()
 
-@click.command()
-### Use the followings for debugging within PyCharm
+
+# Use the followings for debugging within PyCharm:
+# change the signature of the main function to include the additional argument 'extra_args' as shown below
+# def main(dp, rd, mdb, z, dpsi, sc, extra_args):
+# @click.command(context_settings=dict(
+#     ignore_unknown_options=True,
+# ))
 # @click.option('--dp', default=r"E:\Graip\GRAIPPythonTools\demo\demo_RSE\drainpoints.shp", type=click.Path(exists=True))
 # @click.option('--rd', default=r"E:\Graip\GRAIPPythonTools\demo\demo_RSE\roadlines.shp", type=click.Path(exists=True))
 # @click.option('--mdb', default=r"E:\Graip\GRAIPPythonTools\demo\demo_RSE\test.mdb", type=click.Path(exists=True))
@@ -27,13 +33,8 @@ gdal.UseExceptions()
 # @click.option('--dpsi', default=r"E:\Graip\GRAIPPythonTools\demo\demo_RSE\demdpsi.tif", type=click.Path(exists=False))
 # @click.option('--sc', default=True, type=click.BOOL)
 
-# @click.option('--dp', default=r"E:\Graip\GRAIPPythonTools\Data\EFWR_TestSet\drainpoints.shp", type=click.Path(exists=True))
-# @click.option('--rd', default=r"E:\Graip\GRAIPPythonTools\Data\EFWR_TestSet\roadlines.shp", type=click.Path(exists=True))
-# @click.option('--mdb', default=r"E:\Graip\GRAIPPythonTools\Data\EFWR_TestSet\test.mdb", type=click.Path(exists=True))
-# @click.option('--z', default=r"E:\Graip\GRAIPPythonTools\Data\EFWR_TestSet\Grids\wsr.tif", type=click.Path(exists=True))
-# @click.option('--dpsi', default=r"E:\Graip\GRAIPPythonTools\Data\EFWR_TestSet\Grids\demdpsi.tif", type=click.Path(exists=False))
-# @click.option('--sc', default=True, type=click.BOOL)
 
+@click.command()
 @click.option('--dp', default="drainpoints.shp", type=click.Path(exists=True))
 @click.option('--rd', default="roadlines.shp", type=click.Path(exists=True))
 @click.option('--mdb', default="test.mdb", type=click.Path(exists=True))
@@ -55,6 +56,7 @@ def main(dp, rd, mdb, z, dpsi, sc):
     :param --sc: A flag if provided sediment production will be writen to grid file for only stream connected drain points, otherwise for all drain points
     :return: None
     """
+    # print(">>>> Start time:" + str(datetime.now()))
     _validate_args(dp, rd, z, mdb, dpsi)
     input_dem = z
 
@@ -73,12 +75,13 @@ def main(dp, rd, mdb, z, dpsi, sc):
     else:
         is_stream_connected = False
 
-    print ("Please wait a few seconds. Computation is in progress ...")
+    print ("Please wait a few minutes. Computation is in progress ...")
     compute_length_elevation_interpolation(rd_shapefile, input_dem)
     compute_road_sediment_production(rd_shapefile, graip_db)
     compute_drainpoint_sediment_production(graip_db)
     create_drainpoint_weighted_grid(input_dem, graip_db, dpsi_gridfile, dp_shapefile, is_stream_connected)
     print ("Road surface erosion computation finished successfully.")
+    #print(">>>> Finish time:" + str(datetime.now()))
 
 
 def compute_length_elevation_interpolation(rd_shapefile, input_dem):
@@ -99,7 +102,7 @@ def compute_length_elevation_interpolation(rd_shapefile, input_dem):
     dem_nx = dem.RasterXSize
     dem_ny = dem.RasterYSize
     gt = dem.GetGeoTransform()
-    dem_band_array = dem.GetRasterBand(1).ReadAsArray()
+    dem_band = dem.GetRasterBand(1)
 
     # Compute mid-point grid spacings
     # ref: http://gis.stackexchange.com/questions/7611/bilinear-interpolation-of-point-data-on-a-raster-in-python
@@ -110,7 +113,6 @@ def compute_length_elevation_interpolation(rd_shapefile, input_dem):
 
     ax = array([gt[0] + ix*gt[1] + gt[1]/2.0 for ix in range(dem_nx)])
     ay = array([gt[3] + iy*gt[5] + gt[5]/2.0 for iy in range(dem_ny)])
-    bilinterp = interpolate.interp2d(ax, ay, dem_band_array, kind='linear')
 
     try:
         # delete field "Length" if it exists
@@ -139,12 +141,35 @@ def compute_length_elevation_interpolation(rd_shapefile, input_dem):
             if geom:
                 total_points = geom.GetPointCount()
                 # write length value to shapefile
-                #feature.SetField(fld_index_length, geom.Length())
+                # feature.SetField(fld_index_length, geom.Length())
                 rd_length = geom.Length()
                 if total_points > 0:
                     # calculate range from the elevation of 2 end points of the road segment
-                    # using the interpolation
+                    # using interpolation
+
+                    # first find the row, col of the dem corresponding to
+                    # the fist point of the road segment
+                    row, col = utils.get_coordinate_to_grid_row_col(geom.GetX(0), geom.GetY(0), dem)
+                    # get the dem cells corresponding to row, col needed to generate the interpolation function
+                    dem_array = dem_band.ReadAsArray(xoff=col, yoff=row, win_xsize=2, win_ysize=2)
+                    # define the interpolation function
+                    bilinterp = interpolate.interp2d(ax[col:col+2], ay[row:row+2], dem_array,
+                                                     kind='linear')
+
+                    # find the elevation of the 1st point using the interpolation function
                     elevation_1 = bilinterp(geom.GetX(0), geom.GetY(0))[0]
+
+                    # find the row, col of the dem corresponding to
+                    # the 2nd point of the road segment
+                    row, col = utils.get_coordinate_to_grid_row_col(geom.GetX(total_points-1),
+                                                                    geom.GetY(total_points-1), dem)
+                    # get the dem cells corresponding to row, col needed to generate the interpolation function
+                    dem_array = dem_band.ReadAsArray(xoff=col, yoff=row, win_xsize=2, win_ysize=2)
+                    # define the interpolation function
+                    bilinterp = interpolate.interp2d(ax[col:col+2], ay[row:row+2], dem_array,
+                                                     kind='linear')
+
+                    # find the elevation of the 1st point using the interpolation function
                     elevation_2 = bilinterp(geom.GetX(total_points-1), geom.GetY(total_points-1))[0]
                     rd_range = abs(elevation_2 - elevation_1)
                 else:
@@ -161,7 +186,7 @@ def compute_length_elevation_interpolation(rd_shapefile, input_dem):
             # rewrite the feature to the layer - this will in fact save the data
             layer.SetFeature(feature)
             geom = None
-        except:
+        except Exception as ex:
             dataSource.Destroy()
             raise
 
@@ -174,22 +199,22 @@ def _validate_args(dp, rd, z, mdb, dpsi):
     try:
         dataSource = driver.Open(dp, GA_ReadOnly)
         if not dataSource:
-            raise utils.ValidationException("Not a valid shape file (%s) provided for parameter --dp." % dp)
+            raise utils.ValidationException("Not a valid shapefile (%s) provided for parameter --dp." % dp)
         else:
             dataSource.Destroy()
     except Exception as e:
-        print(e.message)
-        return False
+        msg = "Failed to open the shapefile (%s) provided for parameter --dp. " % dp + e.message
+        raise utils.ValidationException(msg)
 
     try:
         dataSource = driver.Open(rd, GA_ReadOnly)
         if not dataSource:
-            raise utils.ValidationException("Not a valid shape file (%s) provided for parameter --rd." % rd)
+            raise utils.ValidationException("Not a valid shapefile (%s) provided for parameter --rd." % rd)
         else:
             dataSource.Destroy()
     except Exception as e:
-        print(e.message)
-        return False
+        msg = "Failed to open the shapefile (%s) provided for parameter --rd. " % rd + e.message
+        raise utils.ValidationException(msg)
 
     dpsi_dir = os.path.dirname(os.path.abspath(dpsi))
     if not os.path.exists(dpsi_dir):
@@ -208,53 +233,6 @@ def _validate_args(dp, rd, z, mdb, dpsi):
         dem = None
     except Exception as ex:
         raise utils.ValidationException(ex.message)
-
-
-def _get_coordinate_to_elevation(x, y, dem):
-    """
-    Finds the elevation of a point on the grid
-
-    :param x: x coordinate of the point
-    :param y: y coordinate of the point
-    :param dem: gdal file object for the grid
-    :return: elevation value
-    """
-
-    band = dem.GetRasterBand(1)
-    geotransform = dem.GetGeoTransform()
-    originX = geotransform[0]
-    originY = geotransform[3]
-    pixelWidth = geotransform[1]
-    pixelHeight = geotransform[5]
-
-    # TODO: Need to check these formulas for finding grid row and col
-    col = int((x - originX)/pixelWidth)
-    row = int((y - originY)/pixelHeight)
-
-    # read only one cell value from the grid - this will allow us to use large dem without memory problem
-    array = band.ReadAsArray(xoff=col, yoff=row, win_xsize=1, win_ysize=1)
-    return array.item(0)
-
-
-def _get_coordinate_to_grid_row_col(x, y, dem):
-    """
-    Finds the row and col of a point on the grid
-
-    :param x: x coordinate of the point
-    :param y: y coordinate of the point
-    :param dem: gdal file object for the grid
-    :return: row, col
-    """
-
-    geotransform = dem.GetGeoTransform()
-    originX = geotransform[0]
-    originY = geotransform[3]
-    pixelWidth = geotransform[1]
-    pixelHeight = geotransform[5]
-    col = int((x - originX)/pixelWidth)
-    row = int((y - originY)/pixelHeight)
-
-    return row, col
 
 
 def compute_road_sediment_production(rd_shapefile, graip_db):
@@ -423,9 +401,7 @@ def compute_drainpoint_sediment_production(graip_db):
             data = (dp_row.SedProd, dp_row.ELength, dp_row.UnitSed, dp_row.SedDel, dp_row.GRAIPDID)
             cursor.execute(update_sql, data)
 
-            #print "Calculated sediment production for drain point#:%d" % dp_row.GRAIPDID
             conn.commit()
-
     except:
         raise
     finally:
@@ -490,7 +466,7 @@ def create_drainpoint_weighted_grid(input_dem, graip_db, dpsi_gridfile, dp_shape
             geom = dp.GetGeometryRef()
 
             # find grid row and col corresponding to drain point
-            row, col = _get_coordinate_to_grid_row_col(geom.GetX(0), geom.GetY(0), dem)
+            row, col = utils.get_coordinate_to_grid_row_col(geom.GetX(0), geom.GetY(0), dem)
             geom = None
             # get the id of the drain point from shape file
             graipdid = dp.GetField('GRAIPDID')
@@ -508,8 +484,6 @@ def create_drainpoint_weighted_grid(input_dem, graip_db, dpsi_gridfile, dp_shape
 
                 # here we are writing to a specific cell of the grid
                 outband.WriteArray(sed_array, xoff=col, yoff=row)
-
-                #print "Writing to grid file for drainpoint:%d  value:%s row:%d col:%d" % (graipdid, sed_array[0][0], row, col)
 
             # find the drain point matching row from the DrainPoints db table
             dp_row = cursor.execute("SELECT SedProd, StreamConnectID FROM DrainPoints WHERE GRAIPDID=?",
@@ -541,5 +515,5 @@ if __name__ == '__main__':
         main()
     except Exception as e:
         print ("Road surface erosion computation failed.")
-        print(e.message)
+        print (e.message)
         sys.exit(1)

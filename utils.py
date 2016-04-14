@@ -86,3 +86,29 @@ def get_coordinate_to_grid_row_col(x, y, dem):
     row = int((y - originY)/pixelHeight)
 
     return row, col
+
+
+def get_coordinate_to_elevation(x, y, dem):
+    """
+    Finds the elevation of a point on the grid
+
+    :param x: x coordinate of the point
+    :param y: y coordinate of the point
+    :param dem: gdal file object for the grid
+    :return: elevation value
+    """
+
+    band = dem.GetRasterBand(1)
+    geotransform = dem.GetGeoTransform()
+    originX = geotransform[0]
+    originY = geotransform[3]
+    pixelWidth = geotransform[1]
+    pixelHeight = geotransform[5]
+
+    # TODO: Need to check these formulas for finding grid row and col
+    col = int((x - originX)/pixelWidth)
+    row = int((y - originY)/pixelHeight)
+
+    # read only one cell value from the grid - this will allow us to use large dem without memory problem
+    array = band.ReadAsArray(xoff=col, yoff=row, win_xsize=1, win_ysize=1)
+    return array.item(0)
