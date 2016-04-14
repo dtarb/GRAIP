@@ -221,7 +221,7 @@ def create_ls_plot(graip_db):
     fig = plt.gcf()
     fig.canvas.set_window_title("L-S Plot")
     plt.show()
-
+    plt.close('all')
     # uncomment this during debugging and put a breakpoint here to see the plot
     #print("Done....")
 

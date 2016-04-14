@@ -35,4 +35,13 @@ process = subprocess.Popen(cmd, shell=True)
 arcpy.AddMessage('\nProcess started:\n')
 start_message = "Please wait. It may take few seconds. Computation is in progress ..."
 arcpy.AddMessage(start_message)
-arcpy.AddMessage("LS Plot generated....")
+streamdata = process.communicate()[0]
+
+err_messages = streamdata.split("\n")
+for msg in err_messages:
+    arcpy.AddMessage(msg)
+if process.returncode == 0:
+    arcpy.AddMessage("LS Plot generated....")
+else:
+    # something went wrong
+    arcpy.AddMessage("Failed to generate LS Plot")
