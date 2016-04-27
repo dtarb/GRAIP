@@ -27,6 +27,9 @@ cmd = py_script_to_execute + \
       ' --low-esi ' + low_esi + \
       ' --alpha ' + alpha
 
+# show executing command
+arcpy.AddMessage('\nEXECUTING COMMAND:\n' + cmd)
+
 # NOTE: contents of shell command is not captured and displayed in arcgis geoprocessing window
 # like other arcgis graip scripts since the display of the matplotlib blocks the process
 #process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
