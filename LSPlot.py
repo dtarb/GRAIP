@@ -210,7 +210,7 @@ def create_ls_plot(graip_db):
     table.scale(2, 2)
 
     # set title for the table
-    plt.text(28.0, 0.09, "Statistics")
+    plt.text(28.0, 0.09, "Statistics", verticalalignment='bottom')
     plt.subplots_adjust(bottom=0.40)
 
     # make the plot window take full screen size
