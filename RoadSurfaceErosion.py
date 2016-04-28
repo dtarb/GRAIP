@@ -2,6 +2,7 @@ __author__ = 'Pabitra'
 
 import os
 import sys
+
 from datetime import datetime
 
 from numpy.numarray import array
@@ -92,6 +93,8 @@ def compute_length_elevation_interpolation(rd_shapefile, input_dem):
     :param input_dem: Path to dem file
     :return: None
     """
+    # DEBUG:
+    print ("Computing length/elevation interpolation...")
 
     driver = ogr.GetDriverByName(utils.GDALFileDriver.ShapeFile())
     dataSource = driver.Open(rd_shapefile, 1)
@@ -186,15 +189,20 @@ def compute_length_elevation_interpolation(rd_shapefile, input_dem):
             # rewrite the feature to the layer - this will in fact save the data
             layer.SetFeature(feature)
             geom = None
+
         except Exception as ex:
             dataSource.Destroy()
             raise
 
     # close datasource
     dataSource.Destroy()
+    # DEBUG:
+    print ("Finished computing length/elevation interpolation...")
 
 
 def _validate_args(dp, rd, z, mdb, dpsi):
+    # DEBUG:
+    print ("Validating inputs...")
     driver = ogr.GetDriverByName(utils.GDALFileDriver.ShapeFile())
     try:
         dataSource = driver.Open(dp, GA_ReadOnly)
@@ -234,6 +242,9 @@ def _validate_args(dp, rd, z, mdb, dpsi):
     except Exception as ex:
         raise utils.ValidationException(ex.message)
 
+    # DEBUG:
+    print ("Finished validating inputs...")
+
 
 def compute_road_sediment_production(rd_shapefile, graip_db):
     """
@@ -243,6 +254,9 @@ def compute_road_sediment_production(rd_shapefile, graip_db):
     :param graip_db: path to the graip database file
     :return: None
     """
+    # DEBUG:
+    print ("Starting to write sediment production to database (RoadLines).")
+
     driver = ogr.GetDriverByName(utils.GDALFileDriver.ShapeFile())
     dataSource = driver.Open(rd_shapefile, 1)
     layer = dataSource.GetLayer()
@@ -339,7 +353,8 @@ def compute_road_sediment_production(rd_shapefile, graip_db):
                 cursor.execute(update_sql, data)
 
             conn.commit()
-
+        # DEBUG:
+        print ("Finished writing sediment production to database (RoadLines).")
     except:
         raise
     finally:
@@ -359,6 +374,8 @@ def compute_drainpoint_sediment_production(graip_db):
     :param graip_db: Path to graip database file
     :return: None
     """
+    # DEBUG:
+    print ("Starting to write sediment production to database (DrainPoints).")
     try:
         conn = pyodbc.connect(utils.MS_ACCESS_CONNECTION % graip_db)
         cursor = conn.cursor()
@@ -402,6 +419,8 @@ def compute_drainpoint_sediment_production(graip_db):
             cursor.execute(update_sql, data)
 
             conn.commit()
+        # DEBUG:
+        print ("Finished writing sediment production to database (DrainPoints).")
     except:
         raise
     finally:
@@ -423,10 +442,13 @@ def create_drainpoint_weighted_grid(input_dem, graip_db, dpsi_gridfile, dp_shape
     :return: None
     """
 
+    # DEBUG:
+    print ("Starting to write sediment data to output grid file.")
     try:
         conn = pyodbc.connect(utils.MS_ACCESS_CONNECTION % graip_db)
         cursor = conn.cursor()
-        # TODO: May be use the no data value from the input dem (ref: http://www.gdal.org/classGDALRasterBand.html#adcca51d230b5ac848c43f1896293fb50)
+        # TODO: May be use the no data value from the input dem
+        # (ref: http://www.gdal.org/classGDALRasterBand.html#adcca51d230b5ac848c43f1896293fb50)
 
         # create a new weighted tif file based on the dem file
         dem = gdal.Open(input_dem)
@@ -438,6 +460,8 @@ def create_drainpoint_weighted_grid(input_dem, graip_db, dpsi_gridfile, dp_shape
         rows = dem.RasterYSize
         cols = dem.RasterXSize
 
+        # DEBUG:
+        print ("Creating sediment output grid file.")
         driver = gdal.GetDriverByName(utils.GDALFileDriver.TifFile())
         number_of_bands = 1
         outRaster = driver.Create(dpsi_gridfile, cols, rows, number_of_bands, gdal.GDT_Float32)
@@ -450,6 +474,8 @@ def create_drainpoint_weighted_grid(input_dem, graip_db, dpsi_gridfile, dp_shape
         outband = outRaster.GetRasterBand(1)
         outband.SetNoDataValue(utils.NO_DATA_VALUE)
         outband.WriteArray(grid_initial_data)
+        # DEBUG:
+        print ("Empty sediment grid file created.")
 
         # set the projection of the tif file same as that of the dem
         outRasterSRS = osr.SpatialReference()
@@ -462,6 +488,8 @@ def create_drainpoint_weighted_grid(input_dem, graip_db, dpsi_gridfile, dp_shape
         layer = dataSource.GetLayer()
 
         # for each drain point in shape file
+        # DEBUG:
+        print ("Looping over drain points in shapefile")
         for dp in layer:
             geom = dp.GetGeometryRef()
 
@@ -497,11 +525,13 @@ def create_drainpoint_weighted_grid(input_dem, graip_db, dpsi_gridfile, dp_shape
         outband.FlushCache()
         # calculate raster statistics (min, max, mean, stdDev)
         outband.GetStatistics(0, 1)
+        # DEBUG:
+        print ("Finished writing data to sediment grid file.")
 
     except:
         raise
     finally:
-        if dataSource:
+        if dataSource is not None:
             dataSource.Destroy()
 
         if conn:
