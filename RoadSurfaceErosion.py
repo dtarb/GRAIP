@@ -444,6 +444,8 @@ def create_drainpoint_weighted_grid(input_dem, graip_db, dpsi_gridfile, dp_shape
 
     # DEBUG:
     print ("Starting to write sediment data to output grid file.")
+    dataSource = None
+    conn = None
     try:
         conn = pyodbc.connect(utils.MS_ACCESS_CONNECTION % graip_db)
         cursor = conn.cursor()
@@ -467,6 +469,9 @@ def create_drainpoint_weighted_grid(input_dem, graip_db, dpsi_gridfile, dp_shape
         outRaster = driver.Create(dpsi_gridfile, cols, rows, number_of_bands, gdal.GDT_Float32)
         outRaster.SetGeoTransform((originX, pixelWidth, 0, originY, 0, pixelHeight))
 
+        # DEBUG:
+        print ("Initializing sediment output grid file with zeros.")
+
         # TODO: use the band Fill() method to initialize the raster (ref:http://www.gdal.org/classGDALRasterBand.html#a55bf20527df638dc48bf25e2ff26f353)
         # initialize the newly created tif file with zeros
         grid_initial_data = np.zeros((rows, cols), dtype=np.float32)
@@ -475,7 +480,7 @@ def create_drainpoint_weighted_grid(input_dem, graip_db, dpsi_gridfile, dp_shape
         outband.SetNoDataValue(utils.NO_DATA_VALUE)
         outband.WriteArray(grid_initial_data)
         # DEBUG:
-        print ("Empty sediment grid file created.")
+        print ("Finished initializing sediment grid file.")
 
         # set the projection of the tif file same as that of the dem
         outRasterSRS = osr.SpatialReference()
@@ -545,5 +550,6 @@ if __name__ == '__main__':
         main()
     except Exception as e:
         print ("Road surface erosion computation failed.")
+        print ">>>>>REASON FOR FAILURE:", sys.exc_info()
         print (e.message)
         sys.exit(1)
