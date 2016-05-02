@@ -3,6 +3,8 @@
 
 ; ****  REQUIREMENTS FOR COMPILING THIS INSTALLER SCRIPT  ****
 ; All the python files that need to be installed should be under the 'SourceFiles' folder.
+
+; We are no installing the followings (4/28/2016)
 ; The 'SourceFiles' folder is at the same label as this script file (graip_2_python_tools_setup.iss)
 ; In addition, the following files must be under the 'SourceFiles' folder
 ; 1. GRAIP Tools.tbx
@@ -16,7 +18,7 @@
 
 
 #define MyAppName "GRAIP-2 Python Tools"
-#define MyAppVersion "1.1"
+#define MyAppVersion "1.2"
 #define MyAppPublisher "Utah State University"
 #define MyAppURL "http://www.neng.usu.edu/cee/faculty/dtarb/tarsoftware.html"
 
@@ -34,7 +36,7 @@ AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
 DefaultDirName={pf}\GRAIP-2
 DefaultGroupName={#MyAppName}
-OutputBaseFilename=setup
+OutputBaseFilename=graip_2_arcgis_python_tools_setup
 Compression=lzma
 SolidCompression=yes
 ; "ArchitecturesInstallIn64BitMode=x64" requests that the install be
@@ -64,13 +66,14 @@ Source: "SourceFiles\ArcGISAddStabilityIndexToDatabase.py"; DestDir: "{app}\Pyth
 Source: "SourceFiles\ArcGISMassWastingPotential.py"; DestDir: "{app}\PythonTools"; Flags: ignoreversion
 Source: "SourceFiles\ArcGISLSPlot.py"; DestDir: "{app}\PythonTools"; Flags: ignoreversion
 
-Source: "SourceFiles\consolidateShp.dll"; DestDir: "{app}\Preprocessor"; Flags: restartreplace ignoreversion regserver 32bit
-Source: "SourceFiles\consolidateShp.dll"; DestDir: "{app}\Preprocessor"; Flags: restartreplace ignoreversion regserver 64bit; Check: IsWin64
-
-Source: "SourceFiles\demo.zip"; DestDir: "{app}\Documentation"; Flags: ignoreversion
 Source: "SourceFiles\GRAIP Tools.tbx"; DestDir: "{app}\PythonTools"; Flags: ignoreversion
-Source: "SourceFiles\GRAIP.mdb"; DestDir: "{app}\Preprocessor\graip db"; Flags: ignoreversion
-Source: "SourceFiles\GRAIPPreprocessor.exe"; DestDir: "{app}\Preprocessor"; Flags: ignoreversion
+
+;We are no more instlling preprocessor as part of this installer  (4/28/2016)
+;Source: "SourceFiles\consolidateShp.dll"; DestDir: "{app}\Preprocessor"; Flags: restartreplace ignoreversion regserver 32bit
+;Source: "SourceFiles\consolidateShp.dll"; DestDir: "{app}\Preprocessor"; Flags: restartreplace ignoreversion regserver 64bit; Check: IsWin64   
+;Source: "SourceFiles\demo.zip"; DestDir: "{app}\Documentation"; Flags: ignoreversion                                                        
+;Source: "SourceFiles\GRAIP.mdb"; DestDir: "{app}\Preprocessor\graip db"; Flags: ignoreversion
+;Source: "SourceFiles\GRAIPPreprocessor.exe"; DestDir: "{app}\Preprocessor"; Flags: ignoreversion
 
 ; Calibration tool got moved to TauDEM Toolbox
 ;Source: "SourceFiles\CalibrationRegionTool.py"; DestDir: "{app}\PythonTools"; Flags: ignoreversion
@@ -83,17 +86,19 @@ Source: "SourceFiles\MassWastingPotential.py"; DestDir: "{app}\PythonTools"; Fla
 Source: "SourceFiles\LSPlot.py"; DestDir: "{app}\PythonTools"; Flags: ignoreversion
 Source: "SourceFiles\utils.py"; DestDir: "{app}\PythonTools"; Flags: ignoreversion
 
-; we no more installing sinmap. GRIAP-2 version 1.1 will depend on TauDEM 5.3 which should have sinmap installed
+; we are no more installing sinmap. GRIAP-2 version 1.1 will depend on TauDEM 5.3 which should have sinmap installed
 ;Source: "E:\SoftwareProjects\GRAIPPythonTools\setup_tools\SourceFiles\SinmapSI\32_bit\SinmapSI.exe"; DestDir: "{app}\PythonTools"; Flags: ignoreversion; Check: not IsWin64
 ;Source: "E:\SoftwareProjects\GRAIPPythonTools\setup_tools\SourceFiles\SinmapSI\64_bit\SinmapSI.exe"; DestDir: "{app}\PythonTools"; Flags: ignoreversion; Check: IsWin64 
 
-Source: "SourceFiles\comdlg32.ocx"; DestDir: {sys}; Flags: onlyifdoesntexist regserver 32bit
-Source: "SourceFiles\mshflxgd.ocx"; DestDir: {sys}; Flags: onlyifdoesntexist regserver 32bit
-Source: "SourceFiles\MSCOMCTL.OCX"; DestDir: {sys}; Flags: onlyifdoesntexist regserver 32bit
+; The followings were needed for preprocessor which we not installing anymore as part of this installation (4/28/2016)
+;Source: "SourceFiles\comdlg32.ocx"; DestDir: {sys}; Flags: onlyifdoesntexist regserver 32bit
+;Source: "SourceFiles\mshflxgd.ocx"; DestDir: {sys}; Flags: onlyifdoesntexist regserver 32bit
+;Source: "SourceFiles\MSCOMCTL.OCX"; DestDir: {sys}; Flags: onlyifdoesntexist regserver 32bit
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
-[Icons]
-Name: "{group}\Preprocessor"; Filename: "{app}\Preprocessor\GRAIPPreprocessor.exe"
+; The following commented out on 4/28/2016
+;[Icons]
+;Name: "{group}\Preprocessor"; Filename: "{app}\Preprocessor\GRAIPPreprocessor.exe"
 
 [Registry]
 ; set PATH  for PythonTools
@@ -129,7 +134,7 @@ begin
 
   UserPage_1 := CreateInputQueryPage(wpWelcome,
       'The following programs will be installed', '',
-      'GRAIPPreprocessor.exe (GRAIP 1.0.10), GRAIP-2 Python tools version 1.1'#13 +  notes_string_1);  
+      'GRAIP-2 Python tools version 1.2'#13 +  notes_string_1);  
 
   UserPage_2 := CreateInputQueryPage(UserPage_1.ID,
   'Continued: The following programs will be installed', '', 
