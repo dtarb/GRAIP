@@ -274,9 +274,11 @@ if __name__ == '__main__':
         if conn:
             conn.close()
 
-        print "Failed to generate L-S Plot"
+        print "Failed to generate L-S Plot."
+        print ">>>>>REASON FOR FAILURE:", sys.exc_info()
         print(ex.message)
         sys.exit(1)
     except:
         print "Failed to generate L-S Plot."
+        print ">>>>>REASON FOR FAILURE:", sys.exc_info()
         sys.exit(1)

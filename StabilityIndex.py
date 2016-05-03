@@ -518,5 +518,6 @@ if __name__ == '__main__':
         sys.exit(0)
     except Exception as e:
         print("Combined stability index computation failed.\n")
+        print ">>>>>REASON FOR FAILURE:", sys.exc_info()
         print(e.message)
         sys.exit(1)

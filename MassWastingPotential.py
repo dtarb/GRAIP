@@ -192,5 +192,6 @@ if __name__ == '__main__':
         print ("Mass wasting potential computation successful.")
     except Exception as e:
         print ("Mass wasting potential computation failed.")
+        print ">>>>>REASON FOR FAILURE:", sys.exc_info()
         print(e.message)
         sys.exit(1)

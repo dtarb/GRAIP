@@ -526,5 +526,6 @@ if __name__ == '__main__':
         sys.exit(0)
     except Exception as e:
         print("Stream sediment computation failed.")
+        print ">>>>>REASON FOR FAILURE:", sys.exc_info()
         print(e.message)
         sys.exit(1)
