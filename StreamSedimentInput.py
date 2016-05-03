@@ -18,22 +18,28 @@ gdal.UseExceptions()
 
 progress_dots = '.'
 
-@click.command()
-### Use the followings for debugging within the PyCharm
-#@click.option('--net', default=r"E:\Graip\GRAIPPythonTools\demo\demo_SSI\demnet.shp", type=click.Path(exists=True))
-#@click.option('--sca', default=r"E:\Graip\GRAIPPythonTools\demo\demo_SSI\DEM\demsca", type=click.Path(exists=True))
-#@click.option('--sca', default=None, type=click.Path(exists=False))
-#@click.option('--ad8', default=r"E:\Graip\GRAIPPythonTools\demo\demo_SSI\demad8.tif", type=click.Path(exists=True))
-#@click.option('--ad8', default=None, type=click.Path(exists=False))
-#@click.option('--sac', default=r"E:\Graip\GRAIPPythonTools\demo\demo_SSI\DEM\demsac", type=click.Path(exists=True))
-#@click.option('--spe', default=r"E:\Graip\GRAIPPythonTools\demo\demo_SSI\demspe_from_grid_1.tif", type=click.Path(exists=False))
 
+### Use the followings for debugging within the PyCharm
+# The signature of the main needs to be changed as follows when debugging:
+#def main(net, sca, ad8, sac, spe, extra_args)
+# @click.command(context_settings=dict(
+#     ignore_unknown_options=True,
+# ))
+# @click.option('--net', default=r"D:\Graip\GRAIPPythonTools\demo\demo_SSI\demnet.shp", type=click.Path(exists=True))
+# @click.option('--sca', default=r"D:\Graip\GRAIPPythonTools\demo\demo_SSI\DEM\demsca", type=click.Path(exists=True))
+#@click.option('--sca', default=None, type=click.Path(exists=False))
+#@click.option('--ad8', default=r"D:\Graip\GRAIPPythonTools\demo\demo_SSI\demad8.tif", type=click.Path(exists=True))
+# @click.option('--ad8', default=None, type=click.Path(exists=False))
+# @click.option('--sac', default=r"D:\Graip\GRAIPPythonTools\demo\demo_SSI\DEM\demsac", type=click.Path(exists=True))
+# @click.option('--spe', default=r"D:\Graip\GRAIPPythonTools\demo\demo_SSI\demspe_x.tif", type=click.Path(exists=False))
+# @click.argument('extra_args', nargs=-1, type=click.UNPROCESSED)
+
+@click.command()
 @click.option('--net', default="demnet.shp", type=click.Path(exists=True))
 @click.option('--sca', default=None, type=click.Path(exists=True))
 @click.option('--ad8', default=None, type=click.Path(exists=True))
 @click.option('--sac', default="demsac.tif", type=click.Path(exists=True))
 @click.option('--spe', default="demspe.tif", type=click.Path(exists=False))
-
 def main(net, sca, ad8, sac, spe):
 
     """
@@ -50,7 +56,7 @@ def main(net, sca, ad8, sac, spe):
     """
     _validate_args(net, sca, ad8, sac, spe)
 
-    print ("Please wait. It may take a minute or so. Computation is in progress ...")
+    print ("Please wait. It may take few minutes. Computation is in progress ...")
     _initialize_output_raster_file(sac, spe)
 
     if sca:
@@ -187,29 +193,38 @@ def _compute_specific_sediment(sac, cont_area, spe, area_type):
                                                   cont_area_pixel_width) / (1000 * cont_area_pixel_height)
 
     start = time.time()
-    sed_array_spe = np.zeros((band_sac.YSize, band_sac.XSize), dtype=np.float32)
+    # commented out as the following may cause memory error in case of large dem
+    #sed_array_spe = np.zeros((band_sac.YSize, band_sac.XSize), dtype=np.float32)
     for row in range(0, band_sac.YSize):
         # get the data for the current row for ad8 and sac
         cont_area_current_row_data = band_cont_area.ReadAsArray(xoff=0, yoff=row, win_xsize=band_cont_area.XSize,
                                                                 win_ysize=1)
         sac_current_row_data = band_sac.ReadAsArray(xoff=0, yoff=row, win_xsize=band_sac.XSize, win_ysize=1)
 
+        sed_array_spe = np.zeros((1, band_sac.XSize), dtype=np.float32)
         for col in range(0, band_sac.XSize):
             if cont_area_current_row_data[0][col] != 0:
                 if cont_area_current_row_data[0][col] != band_cont_area.GetNoDataValue():
                     if sac_current_row_data[0][col] != band_sac.GetNoDataValue():
-                       sed_array_spe[row][col] = sac_current_row_data[0][col] / (cont_area_current_row_data[0][col] *
-                                                                                 PIXEL_TO_AREA_AND_MG_CONVERSION_FACTOR)
+                        # sed_array_spe[row][col] = sac_current_row_data[0][col] / (cont_area_current_row_data[0][col] *
+                        #                                                          PIXEL_TO_AREA_AND_MG_CONVERSION_FACTOR)
+                        sed_array_spe[0][col] = sac_current_row_data[0][col] / (cont_area_current_row_data[0][col] *
+                                                                                PIXEL_TO_AREA_AND_MG_CONVERSION_FACTOR)
 
                     else:
-                        sed_array_spe[row][col] = out_band_spe.GetNoDataValue()
+                        #sed_array_spe[row][col] = out_band_spe.GetNoDataValue()
+                        sed_array_spe[0][col] = out_band_spe.GetNoDataValue()
                 else:
-                    sed_array_spe[row][col] = out_band_spe.GetNoDataValue()
+                    #sed_array_spe[row][col] = out_band_spe.GetNoDataValue()
+                    sed_array_spe[0][col] = out_band_spe.GetNoDataValue()
+
+        # write one row of data
+        out_band_spe.WriteArray(sed_array_spe, xoff=0, yoff=row)
 
     #_show_progress()
     # here we are writing all the data for the grid file. Have tried writing data cell by cell which makes it run
     # very slow
-    out_band_spe.WriteArray(sed_array_spe)
+    #out_band_spe.WriteArray(sed_array_spe)
     out_band_spe.FlushCache()
 
     # calculate raster statistics (min, max, mean, stdDev)
