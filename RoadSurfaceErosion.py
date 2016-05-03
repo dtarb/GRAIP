@@ -33,6 +33,7 @@ gdal.UseExceptions()
 # @click.option('--z', default=r"E:\Graip\GRAIPPythonTools\demo\demo_RSE\DEM\dem.tif", type=click.Path(exists=True))
 # @click.option('--dpsi', default=r"E:\Graip\GRAIPPythonTools\demo\demo_RSE\demdpsi.tif", type=click.Path(exists=False))
 # @click.option('--sc', default=True, type=click.BOOL)
+# @click.argument('extra_args', nargs=-1, type=click.UNPROCESSED)
 
 
 @click.command()
