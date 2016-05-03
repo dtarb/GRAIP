@@ -47,17 +47,23 @@ def initialize_output_raster_file(base_raster_file, output_raster_file, initial_
     outRaster = driver.Create(output_raster_file, cols, rows, number_of_bands, data_type)
     outRaster.SetGeoTransform((originX, pixelWidth, 0, originY, 0, pixelHeight))
 
-    # initialize the newly created tif file with zeros
-    if data_type == gdal.GDT_Float32:
-        grid_initial_data = np.zeros((rows, cols), dtype=np.float32)
-        grid_initial_data[:] = float(initial_data)
-    else:
-        grid_initial_data = np.zeros((rows, cols), dtype=np.int)
-        grid_initial_data[:] = int(initial_data)
+    # initialize the newly created tif file with zeros - this one may cause memory error
+    # if data_type == gdal.GDT_Float32:
+    #     grid_initial_data = np.zeros((rows, cols), dtype=np.float32)
+    #     grid_initial_data[:] = float(initial_data)
+    # else:
+    #     grid_initial_data = np.zeros((rows, cols), dtype=np.int)
+    #     grid_initial_data[:] = int(initial_data)
 
     outband = outRaster.GetRasterBand(1)
     outband.SetNoDataValue(NO_DATA_VALUE)
-    outband.WriteArray(grid_initial_data)
+    # initialize the newly created tif file with zeros - no chance of memory error
+    if data_type == gdal.GDT_Float32:
+        outband.Fill(0.0)
+    else:
+        outband.Fill(0)
+
+    #outband.WriteArray(grid_initial_data)
 
     # set the projection of the tif file same as that of the base_raster file
     outRasterSRS = osr.SpatialReference()

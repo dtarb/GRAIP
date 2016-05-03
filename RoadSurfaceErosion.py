@@ -474,11 +474,13 @@ def create_drainpoint_weighted_grid(input_dem, graip_db, dpsi_gridfile, dp_shape
 
         # TODO: use the band Fill() method to initialize the raster (ref:http://www.gdal.org/classGDALRasterBand.html#a55bf20527df638dc48bf25e2ff26f353)
         # initialize the newly created tif file with zeros
-        grid_initial_data = np.zeros((rows, cols), dtype=np.float32)
-        grid_initial_data[:] = 0.0
+        # grid_initial_data = np.zeros((rows, cols), dtype=np.float32)
+        # grid_initial_data[:] = 0.0    # this causes memory error in case of big dem
         outband = outRaster.GetRasterBand(1)
         outband.SetNoDataValue(utils.NO_DATA_VALUE)
-        outband.WriteArray(grid_initial_data)
+        # initialize the newly created tif file with zeros - this solves the memory error
+        outband.Fill(0.0)
+        #outband.WriteArray(grid_initial_data)
         # DEBUG:
         print ("Finished initializing sediment grid file.")
 
@@ -552,8 +554,4 @@ if __name__ == '__main__':
         print ("Road surface erosion computation failed.")
         print ">>>>>REASON FOR FAILURE:", sys.exc_info()
         print (e.message)
-        sys.exit(1)
-    except:
-        print ("Road surface erosion computation failed.")
-        print ">>>>>REASON FOR FAILURE:", sys.exc_info()
         sys.exit(1)

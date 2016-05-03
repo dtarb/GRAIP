@@ -138,11 +138,13 @@ def _initialize_output_raster_file(base_raster_file, output_raster_file):
     outRaster.SetGeoTransform((originX, pixelWidth, 0, originY, 0, pixelHeight))
 
     # initialize the newly created tif file with zeros
-    grid_initial_data = np.zeros((rows, cols), dtype=np.float32)
-    grid_initial_data[:] = 0.0
+    # grid_initial_data = np.zeros((rows, cols), dtype=np.float32)
+    # grid_initial_data[:] = 0.0    # with large dem this can create memory error
     outband = outRaster.GetRasterBand(1)
     outband.SetNoDataValue(utils.NO_DATA_VALUE)
-    outband.WriteArray(grid_initial_data)
+    # initialize the newly created tif file with zeros - use of Fill() solves memory error problem
+    outband.Fill(0.0)
+    #outband.WriteArray(grid_initial_data)
 
     # set the projection of the tif file same as that of the base_raster file
     outRasterSRS = osr.SpatialReference()
