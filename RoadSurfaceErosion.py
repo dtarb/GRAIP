@@ -553,3 +553,7 @@ if __name__ == '__main__':
         print ">>>>>REASON FOR FAILURE:", sys.exc_info()
         print (e.message)
         sys.exit(1)
+    except:
+        print ("Road surface erosion computation failed.")
+        print ">>>>>REASON FOR FAILURE:", sys.exc_info()
+        sys.exit(1)
