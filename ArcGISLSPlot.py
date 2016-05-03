@@ -18,7 +18,7 @@ current_script_dir = os.path.dirname(os.path.realpath(__file__))
 # put quotes around file paths in case they have spaces
 graip_database_file = '"' + graip_database_file + '"'
 
-py_script_to_execute = os.path.join(current_script_dir, 'LSPlot.py')
+py_script_to_execute = os.path.join(current_script_dir, 'LSPlot.pyw')
 py_script_to_execute = '"' + py_script_to_execute + '"'
 cmd = py_script_to_execute + \
       ' --mdb ' + graip_database_file + \
@@ -37,12 +37,16 @@ arcpy.AddMessage('\nEXECUTING COMMAND:\n' + cmd)
 process = subprocess.Popen(cmd, shell=True)
 arcpy.AddMessage('\nProcess started:\n')
 start_message = "Please wait. It may take few seconds. Computation is in progress ..."
+start_message += "\nA new window should appear showing the plot as soon as the computation is complete."
 arcpy.AddMessage(start_message)
 streamdata = process.communicate()[0]
 
-err_messages = streamdata.split("\n")
-for msg in err_messages:
-    arcpy.AddMessage(msg)
+# had to comment these lines in order to prevent showing error
+# when the user closes the plot window
+#err_messages = streamdata.split("\n")
+# for msg in err_messages:
+#     arcpy.AddMessage(msg)
+
 if process.returncode == 0:
     arcpy.AddMessage("LS Plot generated....")
 else:

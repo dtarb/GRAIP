@@ -19,9 +19,10 @@ DrainType = namedtuple('DrainType', 'GULLY LANDSLIDE ELSEWHERE')
 DRAIN_TYPE = DrainType('gully', 'landslide', 'elsewhere')
 conn = None
 
+
 @click.command()
 ### Use the followings for debugging within PyCharm
-#@click.option('--mdb', default=r"E:\Graip\GRAIPPythonTools\demo\demo_MWP\test.mdb", type=click.Path(exists=True))
+#@click.option('--mdb', default=r"D:\Graip\GRAIPPythonTools\demo\demo_MWP\test.mdb", type=click.Path(exists=True))
 
 # use the following for production
 @click.option('--mdb', default="test.mdb", type=click.Path(exists=True))
@@ -220,6 +221,7 @@ def create_ls_plot(graip_db):
     # set title of the plot window
     fig = plt.gcf()
     fig.canvas.set_window_title("L-S Plot")
+
     plt.show()
     plt.close('all')
     # uncomment this during debugging and put a breakpoint here to see the plot
@@ -265,9 +267,16 @@ def _compute_statistics(elength, slope, dp_type, data_dict_ge_HIGH_ESI, data_dic
 if __name__ == '__main__':
     try:
         main()
-    except Exception as e:
+    except SystemExit:
+        # This exception occurs when the plot window is closed
+        sys.exit(0)
+    except Exception as ex:
         if conn:
             conn.close()
+
+        print "Failed to generate L-S Plot"
+        print(ex.message)
+        sys.exit(1)
+    except:
         print "Failed to generate L-S Plot."
-        print(e.message)
         sys.exit(1)
