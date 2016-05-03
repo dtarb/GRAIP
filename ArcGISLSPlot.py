@@ -18,7 +18,7 @@ current_script_dir = os.path.dirname(os.path.realpath(__file__))
 # put quotes around file paths in case they have spaces
 graip_database_file = '"' + graip_database_file + '"'
 
-py_script_to_execute = os.path.join(current_script_dir, 'LSPlot.pyw')
+py_script_to_execute = os.path.join(current_script_dir, 'LSPlot.py')
 py_script_to_execute = '"' + py_script_to_execute + '"'
 cmd = py_script_to_execute + \
       ' --mdb ' + graip_database_file + \

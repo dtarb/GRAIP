@@ -4,7 +4,7 @@
 ; ****  REQUIREMENTS FOR COMPILING THIS INSTALLER SCRIPT  ****
 ; All the python files that need to be installed should be under the 'SourceFiles' folder.
 
-; We are no installing the followings (4/28/2016)
+; We are no more installing the followings (4/28/2016)
 ; The 'SourceFiles' folder is at the same label as this script file (graip_2_python_tools_setup.iss)
 ; In addition, the following files must be under the 'SourceFiles' folder
 ; 1. GRAIP Tools.tbx
