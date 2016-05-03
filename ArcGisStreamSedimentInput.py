@@ -58,7 +58,7 @@ arcpy.AddMessage('\nEXECUTING COMMAND:\n' + cmd)
 # Capture the contents of shell command and print it to the arcgis dialog box
 process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
 arcpy.AddMessage('\nProcess started:\n')
-start_message = "Please wait. It may take a minute or so. Computation is in progress ..."
+start_message = "Please wait. It may take few minutes. Computation is in progress ..."
 arcpy.AddMessage(start_message)
 streamdata = process.communicate()[0]
 
